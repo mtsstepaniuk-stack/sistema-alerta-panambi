@@ -2,6 +2,7 @@
  * Cliente HTTP simple para consumir el backend local.
  */
 import './real-map.js';
+import './sensor-map-fix.js';
 
 const API_BASE = '/api';
 
