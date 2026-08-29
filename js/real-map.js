@@ -2,31 +2,35 @@ const LEAFLET_CSS = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css
 const LEAFLET_JS = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js';
 const OSM_TILES = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
-const FALLBACK_SENSORS = {
-  'S-01': { lat: -27.7210, lng: -54.9158, zona: 'Ribera Norte' },
-  'S-02': { lat: -27.7265, lng: -54.9137, zona: 'Bajo Uruguay' },
-  'S-03': { lat: -27.7348, lng: -54.9104, zona: 'Costa Sur' },
-  'S-04': { lat: -27.7240, lng: -54.8997, zona: 'Zona Alta' },
-  'S-05': { lat: -27.7187, lng: -54.9073, zona: 'Puente' },
-  'S-06': { lat: -27.7301, lng: -54.9040, zona: 'Arroyo' },
+// Coordenadas corregidas para que todos los sensores simulados queden del lado argentino,
+// alrededor del área urbana de Panambí y su costa sobre el Río Uruguay.
+const SENSOR_LAYOUT = {
+  'S-01': { lat: -27.7178, lng: -54.9178, zona: 'Ribera Norte' },
+  'S-02': { lat: -27.7214, lng: -54.9168, zona: 'Bajo Uruguay' },
+  'S-03': { lat: -27.7275, lng: -54.9158, zona: 'Costa Sur' },
+  'S-04': { lat: -27.7225, lng: -54.9218, zona: 'Zona Alta' },
+  'S-05': { lat: -27.7304, lng: -54.9135, zona: 'Puente' },
+  'S-06': { lat: -27.7255, lng: -54.9187, zona: 'Arroyo' },
 };
 
-const FALLBACK_ZONES = [
-  { nombre: 'Ribera Norte', riesgo: 'Rojo', coords: [[-27.7179, -54.9195], [-27.7188, -54.9126], [-27.7240, -54.9131], [-27.7246, -54.9201]] },
-  { nombre: 'Bajo Uruguay', riesgo: 'Naranja', coords: [[-27.7240, -54.9166], [-27.7248, -54.9105], [-27.7302, -54.9108], [-27.7304, -54.9169]] },
-  { nombre: 'Costa Sur', riesgo: 'Naranja', coords: [[-27.7315, -54.9148], [-27.7314, -54.9079], [-27.7375, -54.9082], [-27.7377, -54.9150]] },
-  { nombre: 'Zona Alta', riesgo: 'Verde', coords: [[-27.7193, -54.9048], [-27.7194, -54.8958], [-27.7260, -54.8958], [-27.7258, -54.9052]] },
-  { nombre: 'Puente', riesgo: 'Amarillo', coords: [[-27.7166, -54.9103], [-27.7165, -54.9050], [-27.7211, -54.9050], [-27.7212, -54.9104]] },
-  { nombre: 'Arroyo', riesgo: 'Naranja', coords: [[-27.7270, -54.9070], [-27.7272, -54.9010], [-27.7335, -54.9009], [-27.7336, -54.9071]] },
+// Las zonas son áreas operativas aproximadas del prototipo, no límites catastrales/oficiales.
+// Se representan como radios alrededor de los puntos de monitoreo para evitar polígonos
+// arbitrarios atravesando el río o territorio brasileño.
+const ZONE_LAYOUT = [
+  { nombre: 'Ribera Norte', sensor: 'S-01', radius: 260 },
+  { nombre: 'Bajo Uruguay', sensor: 'S-02', radius: 250 },
+  { nombre: 'Costa Sur', sensor: 'S-03', radius: 270 },
+  { nombre: 'Zona Alta', sensor: 'S-04', radius: 300 },
+  { nombre: 'Puente', sensor: 'S-05', radius: 190 },
+  { nombre: 'Arroyo', sensor: 'S-06', radius: 230 },
 ];
 
 let leafletPromise = null;
-let mapInstance = null;
-let tileLayer = null;
-let renderInProgress = false;
-let rerenderTimer = null;
-let resizeObserver = null;
-let lastBounds = null;
+let inlineMap = null;
+let modalMap = null;
+let observer = null;
+let renderTimer = null;
+let lastData = null;
 
 function riskColor(risk) {
   if (risk === 'Rojo') return '#c0392b';
@@ -45,10 +49,13 @@ function escapeHtml(value) {
     .replaceAll("'", '&#039;');
 }
 
-function injectMapStyles() {
-  if (document.getElementById('interactive-map-styles')) return;
+function injectStyles() {
+  if (document.getElementById('interactive-map-styles-v3')) return;
+
+  document.getElementById('interactive-map-styles')?.remove();
+
   const style = document.createElement('style');
-  style.id = 'interactive-map-styles';
+  style.id = 'interactive-map-styles-v3';
   style.textContent = `
     #real-map {
       position: relative !important;
@@ -56,38 +63,20 @@ function injectMapStyles() {
       height: 380px !important;
       min-height: 380px !important;
       overflow: hidden !important;
-      border-radius: 10px !important;
+      border-radius: 9px !important;
       background: #dbe8ef !important;
-      isolation: isolate;
     }
-    #real-map .sat-leaflet-map {
-      position: absolute !important;
-      inset: 0 !important;
-      width: 100% !important;
-      height: 100% !important;
-      min-height: 0 !important;
-      border-radius: inherit;
-      z-index: 1;
+
+    #real-map .sat-leaflet-map,
+    .sat-map-modal-map {
+      width: 100%;
+      height: 100%;
+      min-height: 100%;
+      background: #dbe8ef;
     }
-    /* Evita que reglas globales para img deformen o recorten los mosaicos de Leaflet. */
-    #real-map .leaflet-container img.leaflet-tile {
-      max-width: none !important;
-      max-height: none !important;
-      width: 256px !important;
-      height: 256px !important;
-    }
-    #real-map .leaflet-tile-container,
-    #real-map .leaflet-pane,
-    #real-map .leaflet-map-pane,
-    #real-map .leaflet-tile-pane,
-    #real-map .leaflet-overlay-pane,
-    #real-map .leaflet-marker-pane,
-    #real-map .leaflet-tooltip-pane,
-    #real-map .leaflet-popup-pane {
-      position: absolute;
-      left: 0;
-      top: 0;
-    }
+
+    #real-map .sat-leaflet-map { border-radius: 9px; }
+
     #real-map .sat-map-loading,
     #real-map .sat-map-error {
       width: 100%;
@@ -101,10 +90,11 @@ function injectMapStyles() {
       color: #29445b;
       font-size: 14px;
     }
+
     #real-map .sat-map-error { color: #8a2f2f; }
-    #real-map .leaflet-control-attribution { font-size: 10px; }
-    #real-map .sat-map-legend {
-      background: rgba(255,255,255,.95);
+
+    .sat-map-legend {
+      background: rgba(255,255,255,.96);
       color: #243746;
       padding: 8px 10px;
       border-radius: 7px;
@@ -112,123 +102,187 @@ function injectMapStyles() {
       font-size: 11px;
       line-height: 1.5;
     }
-    #real-map .sat-map-legend strong { display:block; margin-bottom:3px; font-size:11px; }
-    #real-map .sat-map-legend span { display:flex; align-items:center; gap:6px; white-space:nowrap; }
-    #real-map .sat-map-legend i { width:9px; height:9px; border-radius:50%; display:inline-block; }
-    #real-map .sat-expand-control button {
+
+    .sat-map-legend strong { display:block; margin-bottom:3px; font-size:11px; }
+    .sat-map-legend span { display:flex; align-items:center; gap:6px; white-space:nowrap; }
+    .sat-map-legend i { width:9px; height:9px; border-radius:50%; display:inline-block; }
+
+    .sat-expand-control button {
       width: 34px;
       height: 34px;
       border: 0;
       background: #fff;
       color: #263746;
-      font-size: 19px;
+      font-size: 18px;
       line-height: 34px;
       cursor: pointer;
       border-radius: 4px;
       box-shadow: 0 1px 5px rgba(0,0,0,.3);
-      font-family: Arial, sans-serif;
+      display: grid;
+      place-items: center;
       padding: 0;
     }
-    #real-map .sat-expand-control button:hover { background: #f2f5f7; }
-    #sat-map-backdrop {
-      position: fixed;
-      inset: 0;
-      z-index: 9998;
-      background: rgba(5, 16, 30, .58);
-      backdrop-filter: blur(7px);
-      -webkit-backdrop-filter: blur(7px);
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity .18s ease;
-    }
-    #sat-map-backdrop.visible {
-      opacity: 1;
-      pointer-events: auto;
-    }
-    #real-map.sat-map-expanded {
-      position: fixed !important;
-      z-index: 9999 !important;
-      top: 5vh !important;
-      left: 5vw !important;
-      right: 5vw !important;
-      bottom: 5vh !important;
-      width: 90vw !important;
-      height: 90vh !important;
-      min-height: 0 !important;
-      border-radius: 16px !important;
-      box-shadow: 0 28px 80px rgba(0,0,0,.48);
-      border: 1px solid rgba(255,255,255,.22);
-    }
-    body.sat-map-overlay-active { overflow: hidden !important; }
-    .sat-sensor-popup { min-width: 170px; }
+
+    .sat-expand-control button:hover { background: #f4f7f9; }
+
+    .sat-sensor-popup { min-width: 175px; }
     .sat-sensor-popup strong { display:block; font-size:14px; margin-bottom:4px; }
     .sat-sensor-popup div { margin:2px 0; }
+
+    .sat-zone-tooltip {
+      font-weight: 700;
+      border: 0 !important;
+      box-shadow: 0 1px 5px rgba(0,0,0,.20) !important;
+    }
+
+    .sat-map-modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 2147483000;
+      background: rgba(5, 18, 32, .70);
+      backdrop-filter: blur(9px);
+      -webkit-backdrop-filter: blur(9px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 28px;
+      animation: satModalFade .16s ease-out;
+    }
+
+    @keyframes satModalFade {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .sat-map-modal-dialog {
+      width: min(1120px, 94vw);
+      height: min(780px, 88vh);
+      min-height: 520px;
+      background: #102238;
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 28px 80px rgba(0,0,0,.55);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .sat-map-modal-header {
+      height: 58px;
+      min-height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px 0 20px;
+      background: #102238;
+      color: #fff;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+    }
+
+    .sat-map-modal-title {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .sat-map-modal-title strong { font-size: 14px; }
+    .sat-map-modal-title span { font-size: 11px; color: #9fb7cd; }
+
+    .sat-map-modal-close {
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.07);
+      color: #fff;
+      cursor: pointer;
+      font-size: 25px;
+      line-height: 34px;
+    }
+
+    .sat-map-modal-close:hover { background: rgba(255,255,255,.14); }
+
+    .sat-map-modal-body {
+      flex: 1 1 auto;
+      min-height: 0;
+      position: relative;
+      background: #dbe8ef;
+    }
+
+    .sat-map-modal-note {
+      position: absolute;
+      left: 14px;
+      bottom: 14px;
+      z-index: 700;
+      max-width: min(500px, 70%);
+      background: rgba(16,34,56,.90);
+      color: #dbe8f4;
+      border: 1px solid rgba(255,255,255,.12);
+      padding: 8px 10px;
+      border-radius: 7px;
+      font-size: 10px;
+      pointer-events: none;
+    }
+
+    body.sat-map-modal-open { overflow: hidden !important; }
+
     @media (max-width: 700px) {
-      #real-map { height: 330px !important; min-height: 330px !important; }
-      #real-map.sat-map-expanded {
-        top: 12px !important;
-        left: 12px !important;
-        right: 12px !important;
-        bottom: 12px !important;
-        width: calc(100vw - 24px) !important;
-        height: calc(100vh - 24px) !important;
+      .sat-map-modal-overlay { padding: 10px; }
+      .sat-map-modal-dialog {
+        width: 100%;
+        height: 92vh;
+        min-height: 0;
+        border-radius: 12px;
       }
+      .sat-map-modal-note { max-width: 76%; }
     }
   `;
   document.head.appendChild(style);
 }
 
-function ensureLeafletCss() {
-  return new Promise((resolve, reject) => {
-    let link = document.querySelector(`link[href="${LEAFLET_CSS}"]`);
-    if (link?.sheet) {
-      resolve();
-      return;
-    }
-    if (!link) {
-      link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = LEAFLET_CSS;
-      document.head.appendChild(link);
-    }
-    link.addEventListener('load', resolve, { once: true });
-    link.addEventListener('error', () => reject(new Error('No se pudo cargar el estilo del mapa.')), { once: true });
-  });
-}
-
-function ensureLeafletJs() {
-  if (window.L) return Promise.resolve(window.L);
-  return new Promise((resolve, reject) => {
-    let script = document.querySelector(`script[src="${LEAFLET_JS}"]`);
-    if (script) {
-      if (window.L) resolve(window.L);
-      else {
-        script.addEventListener('load', () => resolve(window.L), { once: true });
-        script.addEventListener('error', () => reject(new Error('No se pudo cargar Leaflet.')), { once: true });
-      }
-      return;
-    }
-    script = document.createElement('script');
-    script.src = LEAFLET_JS;
-    script.async = true;
-    script.onload = () => resolve(window.L);
-    script.onerror = () => reject(new Error('No se pudo cargar Leaflet.'));
-    document.head.appendChild(script);
-  });
-}
-
 function ensureLeaflet() {
+  if (window.L) return Promise.resolve(window.L);
   if (leafletPromise) return leafletPromise;
-  leafletPromise = Promise.all([ensureLeafletCss(), ensureLeafletJs()]).then(([, L]) => L || window.L);
-  return leafletPromise;
-}
 
-async function waitForVisibleSize(host) {
-  for (let i = 0; i < 30; i += 1) {
-    const rect = host.getBoundingClientRect();
-    if (rect.width > 120 && rect.height > 120) return;
-    await new Promise(resolve => setTimeout(resolve, 60));
-  }
+  leafletPromise = new Promise((resolve, reject) => {
+    let cssLink = document.querySelector(`link[href="${LEAFLET_CSS}"]`);
+    if (!cssLink) {
+      cssLink = document.createElement('link');
+      cssLink.rel = 'stylesheet';
+      cssLink.href = LEAFLET_CSS;
+      document.head.appendChild(cssLink);
+    }
+
+    const finish = () => {
+      if (window.L) {
+        resolve(window.L);
+        return;
+      }
+
+      const existing = document.querySelector(`script[src="${LEAFLET_JS}"]`);
+      if (existing) {
+        existing.addEventListener('load', () => resolve(window.L), { once: true });
+        existing.addEventListener('error', () => reject(new Error('No se pudo cargar Leaflet.')), { once: true });
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.src = LEAFLET_JS;
+      script.onload = () => resolve(window.L);
+      script.onerror = () => reject(new Error('No se pudo cargar Leaflet.'));
+      document.head.appendChild(script);
+    };
+
+    if (cssLink.sheet) finish();
+    else {
+      cssLink.addEventListener('load', finish, { once: true });
+      cssLink.addEventListener('error', () => reject(new Error('No se pudo cargar el estilo del mapa.')), { once: true });
+      setTimeout(finish, 1200);
+    }
+  });
+
+  return leafletPromise;
 }
 
 async function loadDashboardData() {
@@ -239,16 +293,22 @@ async function loadDashboardData() {
 }
 
 function normalizedSensors(data) {
-  const source = Array.isArray(data?.sensores) ? data.sensores : (Array.isArray(data?.sensors) ? data.sensors : []);
+  const source = Array.isArray(data?.sensores)
+    ? data.sensores
+    : (Array.isArray(data?.sensors) ? data.sensors : []);
+
   const byCode = new Map(source.map(sensor => [String(sensor.sensor || sensor.id || ''), sensor]));
-  return Object.entries(FALLBACK_SENSORS).map(([code, fallback]) => {
+
+  return Object.entries(SENSOR_LAYOUT).map(([code, layout]) => {
     const sensor = byCode.get(code) || {};
     return {
       ...sensor,
-      sensor: sensor.sensor || sensor.id || code,
-      zona: sensor.zona || fallback.zona,
-      lat: Number(sensor.lat ?? fallback.lat),
-      lng: Number(sensor.lng ?? sensor.lon ?? fallback.lng),
+      sensor: code,
+      zona: sensor.zona || layout.zona,
+      // Se fuerza el layout cartográfico corregido aunque el backend del prototipo tenga
+      // coordenadas históricas incorrectas.
+      lat: layout.lat,
+      lng: layout.lng,
       nivel_m: Number(sensor.nivel_m ?? sensor.nivel ?? 0),
       riesgo: sensor.riesgo || 'Verde',
       estado: sensor.estado || 'Activo',
@@ -256,109 +316,18 @@ function normalizedSensors(data) {
   });
 }
 
-function normalizedZones(data) {
-  const source = Array.isArray(data?.zonas) ? data.zonas
-    : (Array.isArray(data?.zonas_mapa) ? data.zonas_mapa
-      : (Array.isArray(data?.zonasRiesgo) ? data.zonasRiesgo : []));
-  if (!source.length) return FALLBACK_ZONES;
-  const fallbackByName = new Map(FALLBACK_ZONES.map(zone => [zone.nombre, zone]));
-  return source.map(zone => {
-    const name = zone.nombre || zone.zona;
-    const fallback = fallbackByName.get(name);
-    return {
-      nombre: name || fallback?.nombre || 'Zona',
-      riesgo: zone.riesgo || zone.riesgo_base || fallback?.riesgo || 'Verde',
-      coords: zone.coords || zone.coordenadas || fallback?.coords || [],
-    };
-  }).filter(zone => Array.isArray(zone.coords) && zone.coords.length >= 3);
+function zoneRisk(zone, sensors) {
+  const sensor = sensors.find(item => item.sensor === zone.sensor);
+  return sensor?.riesgo || 'Verde';
 }
 
-function getBackdrop() {
-  let backdrop = document.getElementById('sat-map-backdrop');
-  if (!backdrop) {
-    backdrop = document.createElement('div');
-    backdrop.id = 'sat-map-backdrop';
-    backdrop.setAttribute('aria-hidden', 'true');
-    document.body.appendChild(backdrop);
-  }
-  return backdrop;
-}
-
-function refreshMapLayout(refit = false) {
-  if (!mapInstance) return;
-  const run = () => {
-    try {
-      mapInstance.invalidateSize({ animate: false, pan: false });
-      if (refit && lastBounds?.isValid?.()) mapInstance.fitBounds(lastBounds, { padding: [28, 28], maxZoom: 15 });
-      tileLayer?.redraw?.();
-    } catch (_) { /* el mapa puede haberse reemplazado durante un refresco */ }
-  };
-  requestAnimationFrame(run);
-  setTimeout(run, 120);
-  setTimeout(run, 420);
-}
-
-function closeExpandedMap() {
-  const host = document.getElementById('real-map');
-  if (!host?.classList.contains('sat-map-expanded')) return;
-  host.classList.remove('sat-map-expanded');
-  document.body.classList.remove('sat-map-overlay-active');
-  getBackdrop().classList.remove('visible');
-  refreshMapLayout(false);
-}
-
-function toggleExpandedMap() {
-  const host = document.getElementById('real-map');
-  if (!host) return;
-  const opening = !host.classList.contains('sat-map-expanded');
-  host.classList.toggle('sat-map-expanded', opening);
-  document.body.classList.toggle('sat-map-overlay-active', opening);
-  getBackdrop().classList.toggle('visible', opening);
-  refreshMapLayout(false);
-}
-
-function installOverlayEvents() {
-  const backdrop = getBackdrop();
-  if (backdrop.dataset.bound === '1') return;
-  backdrop.dataset.bound = '1';
-  backdrop.addEventListener('click', closeExpandedMap);
-  document.addEventListener('keydown', event => {
-    if (event.key === 'Escape') closeExpandedMap();
+function addTileLayer(L, map) {
+  const layer = L.tileLayer(OSM_TILES, {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors',
   });
-}
-
-function addExpandControl(L, map) {
-  const ExpandControl = L.Control.extend({
-    options: { position: 'topright' },
-    onAdd() {
-      const wrapper = L.DomUtil.create('div', 'sat-expand-control leaflet-bar');
-      const button = L.DomUtil.create('button', '', wrapper);
-      button.type = 'button';
-      button.title = 'Ampliar mapa';
-      button.setAttribute('aria-label', 'Ampliar mapa en una ventana');
-      button.textContent = '⤢';
-      L.DomEvent.disableClickPropagation(wrapper);
-      L.DomEvent.disableScrollPropagation(wrapper);
-      L.DomEvent.on(button, 'click', event => {
-        L.DomEvent.stop(event);
-        toggleExpandedMap();
-        button.textContent = document.getElementById('real-map')?.classList.contains('sat-map-expanded') ? '×' : '⤢';
-        button.title = button.textContent === '×' ? 'Cerrar mapa ampliado' : 'Ampliar mapa';
-      });
-      document.addEventListener('keydown', event => {
-        if (event.key === 'Escape') {
-          button.textContent = '⤢';
-          button.title = 'Ampliar mapa';
-        }
-      });
-      getBackdrop().addEventListener('click', () => {
-        button.textContent = '⤢';
-        button.title = 'Ampliar mapa';
-      });
-      return wrapper;
-    },
-  });
-  map.addControl(new ExpandControl());
+  layer.addTo(map);
+  return layer;
 }
 
 function addLegend(L, map) {
@@ -377,151 +346,256 @@ function addLegend(L, map) {
   legend.addTo(map);
 }
 
-async function renderInteractiveMap() {
-  const host = document.getElementById('real-map');
-  if (!host || renderInProgress) return;
-  if (host.querySelector('.leaflet-container')) {
-    refreshMapLayout(false);
-    return;
+function addExpandControl(L, map, data) {
+  const ExpandControl = L.Control.extend({
+    options: { position: 'topright' },
+    onAdd() {
+      const wrapper = L.DomUtil.create('div', 'sat-expand-control leaflet-bar');
+      const button = L.DomUtil.create('button', '', wrapper);
+      button.type = 'button';
+      button.title = 'Ampliar mapa';
+      button.setAttribute('aria-label', 'Ampliar mapa');
+      button.textContent = '↗';
+      L.DomEvent.disableClickPropagation(wrapper);
+      L.DomEvent.on(button, 'click', event => {
+        L.DomEvent.stop(event);
+        openMapModal(data);
+      });
+      return wrapper;
+    },
+  });
+  map.addControl(new ExpandControl());
+}
+
+function addMapContent(L, map, data, { expanded = false } = {}) {
+  const sensors = normalizedSensors(data);
+  const bounds = [];
+
+  // Zonas operativas aproximadas: círculos centrados en cada sensor.
+  ZONE_LAYOUT.forEach(zone => {
+    const sensor = sensors.find(item => item.sensor === zone.sensor);
+    if (!sensor) return;
+    const risk = zoneRisk(zone, sensors);
+    const color = riskColor(risk);
+
+    const circle = L.circle([sensor.lat, sensor.lng], {
+      radius: zone.radius,
+      color,
+      weight: expanded ? 3 : 2,
+      opacity: .95,
+      fillColor: color,
+      fillOpacity: expanded ? .14 : .11,
+    }).addTo(map);
+
+    circle.bindTooltip(`${escapeHtml(zone.nombre)} · ${escapeHtml(risk)}`, {
+      sticky: true,
+      className: 'sat-zone-tooltip',
+    });
+
+    bounds.push([sensor.lat, sensor.lng]);
+  });
+
+  sensors.forEach(sensor => {
+    const color = riskColor(sensor.riesgo);
+    const marker = L.circleMarker([sensor.lat, sensor.lng], {
+      radius: expanded ? 10 : 9,
+      color: '#ffffff',
+      weight: 2.5,
+      fillColor: color,
+      fillOpacity: 1,
+    }).addTo(map);
+
+    marker.bindTooltip(`${escapeHtml(sensor.sensor)} · ${escapeHtml(sensor.zona)}`, {
+      direction: 'top',
+      offset: [0, -7],
+    });
+
+    marker.bindPopup(`
+      <div class="sat-sensor-popup">
+        <strong>${escapeHtml(sensor.sensor)} — ${escapeHtml(sensor.zona)}</strong>
+        <div><b>Nivel:</b> ${Number(sensor.nivel_m).toFixed(2)} m</div>
+        <div><b>Riesgo:</b> ${escapeHtml(sensor.riesgo)}</div>
+        <div><b>Estado:</b> ${escapeHtml(sensor.estado)}</div>
+        <div style="margin-top:5px;font-size:10px;color:#667">Ubicación aproximada del prototipo.</div>
+      </div>
+    `);
+
+    bounds.push([sensor.lat, sensor.lng]);
+  });
+
+  addLegend(L, map);
+
+  if (bounds.length) {
+    map.fitBounds(bounds, {
+      padding: expanded ? [70, 70] : [42, 42],
+      maxZoom: expanded ? 15 : 14,
+    });
+  } else {
+    map.setView([-27.7223, -54.9149], 14);
+  }
+}
+
+function closeMapModal() {
+  const overlay = document.getElementById('sat-map-modal');
+  if (!overlay) return;
+
+  if (modalMap) {
+    try { modalMap.remove(); } catch (_) {}
+    modalMap = null;
   }
 
-  renderInProgress = true;
-  host.dataset.interactiveMap = 'loading';
-  host.innerHTML = '<div class="sat-map-loading">Cargando mapa interactivo de Panambí…</div>';
+  overlay.remove();
+  document.body.classList.remove('sat-map-modal-open');
+  document.removeEventListener('keydown', handleModalKeydown);
+}
+
+function handleModalKeydown(event) {
+  if (event.key === 'Escape') closeMapModal();
+}
+
+async function openMapModal(data = lastData) {
+  if (document.getElementById('sat-map-modal')) return;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'sat-map-modal';
+  overlay.className = 'sat-map-modal-overlay';
+  overlay.innerHTML = `
+    <div class="sat-map-modal-dialog" role="dialog" aria-modal="true" aria-label="Mapa ampliado de Panambí">
+      <div class="sat-map-modal-header">
+        <div class="sat-map-modal-title">
+          <strong>Mapa interactivo de Panambí</strong>
+          <span>Sensores simulados y zonas operativas de referencia</span>
+        </div>
+        <button class="sat-map-modal-close" type="button" aria-label="Cerrar mapa">×</button>
+      </div>
+      <div class="sat-map-modal-body">
+        <div class="sat-map-modal-map" id="sat-map-modal-map"></div>
+        <div class="sat-map-modal-note">Las áreas coloreadas son zonas operativas aproximadas del prototipo. No representan límites oficiales de barrios ni zonas de inundación reales.</div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+  document.body.classList.add('sat-map-modal-open');
+
+  const dialog = overlay.querySelector('.sat-map-modal-dialog');
+  const closeButton = overlay.querySelector('.sat-map-modal-close');
+  closeButton.addEventListener('click', closeMapModal);
+
+  overlay.addEventListener('mousedown', event => {
+    if (event.target === overlay) closeMapModal();
+  });
+  dialog.addEventListener('mousedown', event => event.stopPropagation());
+  document.addEventListener('keydown', handleModalKeydown);
 
   try {
-    const [L, data] = await Promise.all([ensureLeaflet(), loadDashboardData()]);
-    await waitForVisibleSize(host);
-    const sensors = normalizedSensors(data);
-    const zones = normalizedZones(data);
-
-    if (resizeObserver) {
-      try { resizeObserver.disconnect(); } catch (_) { /* noop */ }
-      resizeObserver = null;
-    }
-    if (mapInstance) {
-      try { mapInstance.remove(); } catch (_) { /* noop */ }
-      mapInstance = null;
-    }
-
-    host.innerHTML = '<div class="sat-leaflet-map" aria-label="Mapa interactivo de Panambí con sensores y zonas de riesgo"></div>';
-    const mapNode = host.querySelector('.sat-leaflet-map');
-    const map = L.map(mapNode, {
+    const L = await ensureLeaflet();
+    const mapNode = overlay.querySelector('#sat-map-modal-map');
+    modalMap = L.map(mapNode, {
       zoomControl: true,
       scrollWheelZoom: true,
       doubleClickZoom: true,
       dragging: true,
       touchZoom: true,
-      boxZoom: true,
-      keyboard: true,
-      preferCanvas: false,
-    });
-    mapInstance = map;
-
-    tileLayer = L.tileLayer(OSM_TILES, {
-      minZoom: 3,
-      maxZoom: 19,
-      tileSize: 256,
-      keepBuffer: 4,
-      updateWhenIdle: false,
-      crossOrigin: true,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors',
-    }).addTo(map);
-
-    const boundsPoints = [];
-
-    zones.forEach(zone => {
-      const color = riskColor(zone.riesgo);
-      const polygon = L.polygon(zone.coords, {
-        color,
-        weight: 2,
-        opacity: 0.9,
-        fillColor: color,
-        fillOpacity: 0.13,
-      }).addTo(map);
-      polygon.bindTooltip(`${escapeHtml(zone.nombre)} · ${escapeHtml(zone.riesgo)}`, { sticky: true });
-      zone.coords.forEach(point => boundsPoints.push(point));
+      preferCanvas: true,
     });
 
-    sensors.forEach(sensor => {
-      if (!Number.isFinite(sensor.lat) || !Number.isFinite(sensor.lng)) return;
-      const color = riskColor(sensor.riesgo);
-      const marker = L.circleMarker([sensor.lat, sensor.lng], {
-        radius: 9,
-        color: '#ffffff',
-        weight: 2.5,
-        fillColor: color,
-        fillOpacity: 1,
-      }).addTo(map);
-      marker.bindTooltip(`${escapeHtml(sensor.sensor)} · ${escapeHtml(sensor.zona)}`, {
-        direction: 'top',
-        offset: [0, -7],
-      });
-      marker.bindPopup(`
-        <div class="sat-sensor-popup">
-          <strong>${escapeHtml(sensor.sensor)} — ${escapeHtml(sensor.zona)}</strong>
-          <div><b>Nivel:</b> ${Number(sensor.nivel_m).toFixed(2)} m</div>
-          <div><b>Riesgo:</b> ${escapeHtml(sensor.riesgo)}</div>
-          <div><b>Estado:</b> ${escapeHtml(sensor.estado)}</div>
-        </div>
-      `);
-      boundsPoints.push([sensor.lat, sensor.lng]);
+    addTileLayer(L, modalMap);
+    addMapContent(L, modalMap, data || await loadDashboardData(), { expanded: true });
+
+    // Esperar al layout del modal evita el típico mapa reducido a una esquina.
+    requestAnimationFrame(() => {
+      modalMap?.invalidateSize(true);
+      setTimeout(() => modalMap?.invalidateSize(true), 120);
+      setTimeout(() => modalMap?.invalidateSize(true), 400);
     });
+  } catch (error) {
+    console.error('[Mapa ampliado]', error);
+    const body = overlay.querySelector('.sat-map-modal-body');
+    if (body) body.innerHTML = '<div style="height:100%;display:grid;place-items:center;color:#8a2f2f;background:#edf3f7;padding:24px;text-align:center">No se pudo cargar el mapa ampliado.</div>';
+  }
+}
 
-    addLegend(L, map);
-    addExpandControl(L, map);
+async function renderInlineMap() {
+  const host = document.getElementById('real-map');
+  if (!host) return;
 
-    if (boundsPoints.length) {
-      lastBounds = L.latLngBounds(boundsPoints);
-      map.fitBounds(lastBounds, { padding: [24, 24], maxZoom: 15 });
-    } else {
-      lastBounds = null;
-      map.setView([-27.726, -54.909], 14);
+  // Si ya existe nuestro mapa y no fue reemplazado por dashboard.js, sólo recalcular tamaño.
+  if (host.querySelector('.sat-leaflet-map') && inlineMap) {
+    inlineMap.invalidateSize(false);
+    return;
+  }
+
+  host.innerHTML = '<div class="sat-map-loading">Cargando mapa interactivo de Panambí…</div>';
+
+  try {
+    const [L, data] = await Promise.all([ensureLeaflet(), loadDashboardData()]);
+    lastData = data;
+
+    if (inlineMap) {
+      try { inlineMap.remove(); } catch (_) {}
+      inlineMap = null;
     }
 
-    host.dataset.interactiveMap = 'ready';
-    resizeObserver = new ResizeObserver(() => refreshMapLayout(false));
-    resizeObserver.observe(host);
-    map.whenReady(() => refreshMapLayout(false));
-    refreshMapLayout(false);
+    host.innerHTML = '<div class="sat-leaflet-map" aria-label="Mapa interactivo de Panambí con sensores y zonas de riesgo"></div>';
+    const mapNode = host.querySelector('.sat-leaflet-map');
+
+    inlineMap = L.map(mapNode, {
+      zoomControl: true,
+      scrollWheelZoom: true,
+      doubleClickZoom: true,
+      dragging: true,
+      touchZoom: true,
+      preferCanvas: true,
+    });
+
+    addTileLayer(L, inlineMap);
+    addMapContent(L, inlineMap, data, { expanded: false });
+    addExpandControl(L, inlineMap, data);
+
+    requestAnimationFrame(() => inlineMap?.invalidateSize(true));
+    setTimeout(() => inlineMap?.invalidateSize(true), 120);
+    setTimeout(() => inlineMap?.invalidateSize(true), 450);
   } catch (error) {
     console.error('[Mapa interactivo]', error);
-    host.dataset.interactiveMap = 'error';
     host.innerHTML = '<div class="sat-map-error">No se pudo cargar el mapa interactivo. Verificá la conexión a Internet y volvé a intentar.</div>';
-  } finally {
-    renderInProgress = false;
   }
 }
 
 function scheduleRender(delay = 80) {
-  clearTimeout(rerenderTimer);
-  rerenderTimer = setTimeout(() => {
-    const host = document.getElementById('real-map');
-    if (!host) return;
-    if (!host.querySelector('.leaflet-container')) renderInteractiveMap();
-    else refreshMapLayout(false);
-  }, delay);
+  clearTimeout(renderTimer);
+  renderTimer = setTimeout(() => renderInlineMap(), delay);
 }
 
-function watchForStaticMapReplacements() {
-  const observer = new MutationObserver(mutations => {
+function startObserver() {
+  if (observer) observer.disconnect();
+
+  observer = new MutationObserver(mutations => {
     for (const mutation of mutations) {
       const host = mutation.target?.closest?.('#real-map') || (mutation.target?.id === 'real-map' ? mutation.target : null);
-      if (host && !host.querySelector('.leaflet-container')) {
-        scheduleRender();
-        break;
+      if (!host) continue;
+
+      // dashboard.js vuelve a escribir el contenido estático: restauramos el mapa real.
+      if (!host.querySelector('.sat-leaflet-map')) {
+        scheduleRender(30);
       }
+      break;
     }
   });
+
   observer.observe(document.body, { childList: true, subtree: true });
-  window.addEventListener('resize', () => refreshMapLayout(false));
-  installOverlayEvents();
   scheduleRender(0);
+
+  window.addEventListener('resize', () => {
+    inlineMap?.invalidateSize(false);
+    modalMap?.invalidateSize(false);
+  });
 }
 
-injectMapStyles();
+injectStyles();
+
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', watchForStaticMapReplacements, { once: true });
+  document.addEventListener('DOMContentLoaded', startObserver, { once: true });
 } else {
-  watchForStaticMapReplacements();
+  startObserver();
 }
