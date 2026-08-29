@@ -13,6 +13,31 @@ function initials(name = 'Usuario') {
     .join('') || 'U';
 }
 
+/**
+ * Evita que las credenciales de demostración aparezcan escritas al abrir la página.
+ * También elimina los valores definidos originalmente en el HTML para que el usuario
+ * tenga que completar usuario y contraseña manualmente.
+ */
+function prepareLoginInputs() {
+  const userInput = document.getElementById('login-user');
+  const passInput = document.getElementById('login-pass');
+
+  if (userInput) {
+    userInput.removeAttribute('value');
+    userInput.defaultValue = '';
+    userInput.value = '';
+    userInput.setAttribute('autocomplete', 'off');
+  }
+
+  if (passInput) {
+    passInput.removeAttribute('value');
+    passInput.defaultValue = '';
+    passInput.value = '';
+    // Evita que el navegador trate la contraseña de demostración como una credencial precargada.
+    passInput.setAttribute('autocomplete', 'new-password');
+  }
+}
+
 export function currentUser() {
   try {
     return JSON.parse(localStorage.getItem('sat-user') || 'null');
@@ -84,9 +109,19 @@ export function logout() {
   document.body.classList.remove('public-report-mode', 'admin-role');
   refreshUserMenu();
   window.navigate('s-login');
+  prepareLoginInputs();
   showToast('Sesión cerrada correctamente.');
 }
 
 window.login = login;
 window.logout = logout;
 window.refreshUserMenu = refreshUserMenu;
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', prepareLoginInputs, { once: true });
+} else {
+  prepareLoginInputs();
+}
+
+// También limpia los campos al volver a la pestaña/página desde la caché del navegador.
+window.addEventListener('pageshow', prepareLoginInputs);
