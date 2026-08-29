@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SAT Inundaciones – Panambí, Misiones</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  
+  <!-- CSS Stylesheets -->
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/pages.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIINfQbEdI1Qazhe0lT7LHx0BIfHPATdY4g=" crossorigin="">
+</head>
+<body>
+
+<!-- ================================================
+     SCREEN 1: LOGIN
+================================================ -->
+<div id="s-login" class="screen active">
+  <div class="water-bg">
+    <div class="wave"></div>
+    <div class="wave"></div>
+  </div>
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-logo-shield">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+          <path d="M12 2L4 6v6c0 5.5 3.4 10.7 8 12 4.6-1.3 8-6.5 8-12V6L12 2z" fill="white" opacity=".9"/>
+          <path d="M12 7v10M8.5 10.5l3.5 3.5 5-5" stroke="#1A3A5C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        </svg>
+      </div>
+      <div class="login-logo-text">
+        <h1>Sistema de Alerta Temprana<br>de Inundaciones</h1>
+        <p>Acceso seguro — Defensa Civil</p>
+      </div>
+    </div>
+    <div class="login-divider"></div>
+    <div class="input-group">
+      <label>Usuario</label>
+      <input type="text" placeholder="ej. dcivil.panambi" id="login-user" value="dcivil.panambi">
+    </div>
+    <div class="input-group">
+      <label>Contraseña</label>
+      <input type="password" placeholder="••••••••" id="login-pass" value="admin123">
+    </div>
+    <button class="btn btn-primary btn-full btn-lg" onclick="login()" style="margin-top:6px;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Ingresar al Sistema
+    </button>
+    <button class="btn btn-danger btn-full btn-lg login-report-btn" onclick="openPublicReport()" style="margin-top:10px;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 12h6M9 16h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><rect x="4" y="4" width="16" height="16" rx="2" stroke="currentColor" stroke-width="2"/></svg>
+      Reportar incidencia como vecino
+    </button>
+    <div class="login-footer">
+      <strong>Municipalidad de Panambí</strong><br>
+      Secretaría de Defensa Civil y Protección Ciudadana<br>
+      <span style="color:#aab;font-size:10px;">v2.4.1 — uso exclusivo personal autorizado</span>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================
+     SCREEN 2: DASHBOARD PRINCIPAL
+================================================ -->
+<div id="s-dash" class="screen">
+  <div class="app-layout">
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="topbar-logo">
+          <div class="topbar-logo-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 2L4 6v6c0 5.5 3.4 10.7 8 12 4.6-1.3 8-6.5 8-12V6L12 2z" fill="white"/></svg>
+          </div>
+          <div>
+            <div class="topbar-logo-text">SAT Inundaciones</div>
+            <div class="topbar-logo-sub">Panambí, Misiones</div>
+          </div>
+        </div>
+        <div class="topbar-status" id="topbar-status-badge">
+          <div class="status-dot alerta" id="topbar-dot"></div>
+          <span class="status-text" id="topbar-status-text">⚠ ALERTA ACTIVA</span>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <span class="topbar-time" id="topbar-clock">—</span>
+        <button class="theme-toggle-btn" title="Cambiar tema"><span>🌙</span></button>
+        <div class="topbar-user" onclick="navigate('s-login')">
+          <div class="topbar-avatar">JL</div>
+          <span class="topbar-username">J. López</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="color:rgba(255,255,255,.5)"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </div>
+      </div>
+    </div>
+    <div class="main-area">
+      <!-- Sidebar -->
+      <div class="sidebar">
+        <div class="nav-section-title">Monitoreo</div>
+        <div class="nav-item active" onclick="navigate('s-dash')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/></svg>
+          Panel Principal
+        </div>
+        <div class="nav-item" onclick="navigate('s-validar')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.8"/><path d="M12 8v4l3 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          Validar Alerta
+          <span class="nav-badge">2</span>
+        </div>
+        <div class="nav-section-title">Acciones</div>
+        <div class="nav-item" onclick="navigate('s-emit')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Emitir Alerta Manual
+        </div>
+        <div class="nav-section-title">Gestión</div>
+        <div class="nav-item" onclick="navigate('s-contactos')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Contactos
+        </div>
+        <div class="nav-item admin-only" onclick="navigate('s-usuarios')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM19 8v6M22 11h-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> Usuarios</div>
+        <div class="nav-item" onclick="navigate('s-historial')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Historial
+        </div>
+      </div>
+      <!-- Content -->
+      <div class="content">
+        <!-- Alert banner -->
+        <div class="alert-banner">
+          <div class="alert-banner-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4M12 17h.01" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="alert-banner-text">
+            <div class="alert-banner-title">ALERTA NARANJA ACTIVA — Río Uruguay superó umbral de 7.2 m</div>
+            <div class="alert-banner-desc">Zona Ribera Norte en riesgo. 2 alertas pendientes de validación. Última medición: hace 4 minutos.</div>
+          </div>
+          <button class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff;border:1.5px solid rgba(255,255,255,.35);" onclick="navigate('s-validar')">
+            Ver alertas
+          </button>
+        </div>
+
+        <!-- Page header -->
+        <div class="page-header">
+          <div>
+            <div class="page-title">Panel de Control</div>
+            <div class="page-sub">Última actualización: <span id="last-update">hace 2 min</span></div>
+          </div>
+          <div style="display:flex;gap:10px;">
+            <button class="btn btn-outline btn-sm" onclick="navigate('s-historial')">Ver historial</button>
+            <button class="btn btn-danger btn-sm" onclick="navigate('s-emit')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Emitir Alerta Manual
+            </button>
+          </div>
+        </div>
+
+        <!-- KPI grid -->
+        <div class="kpi-grid">
+          <!-- Nivel río -->
+          <div class="kpi-card">
+            <div class="kpi-accent kpi-accent-naranja"></div>
+            <div class="kpi-icon-wrap" style="background:#FEF3E2;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" stroke="#E67E22" stroke-width="2"/><circle cx="12" cy="12" r="3" stroke="#E67E22" stroke-width="2"/></svg>
+            </div>
+            <div class="kpi-value">7.84<span style="font-size:14px;color:var(--texto-sub)"> m</span></div>
+            <div class="kpi-label">Nivel actual del río</div>
+            <div class="kpi-delta kpi-delta-up">▲ +0.12 m en 1h</div>
+          </div>
+          <!-- Tendencia -->
+          <div class="kpi-card">
+            <div class="kpi-accent kpi-accent-rojo"></div>
+            <div class="kpi-icon-wrap" style="background:#FDECEA;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" stroke="#C0392B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="17 6 23 6 23 12" stroke="#C0392B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="kpi-value" style="color:var(--rojo);font-size:18px;padding-top:4px;">Subiendo</div>
+            <div class="kpi-label">Tendencia</div>
+            <div class="kpi-delta kpi-delta-up">Ritmo: +0.08 m/h</div>
+          </div>
+          <!-- Tiempo estimado -->
+          <div class="kpi-card">
+            <div class="kpi-accent kpi-accent-naranja"></div>
+            <div class="kpi-icon-wrap" style="background:#FEF3E2;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#E67E22" stroke-width="2"/><polyline points="12 6 12 12 16 14" stroke="#E67E22" stroke-width="2" stroke-linecap="round"/></svg>
+            </div>
+            <div class="kpi-value">3.5<span style="font-size:14px;color:var(--texto-sub)"> h</span></div>
+            <div class="kpi-label">Tiempo estimado de llegada</div>
+            <div class="kpi-delta kpi-delta-up">Zona Ribera Norte</div>
+          </div>
+          <!-- Sensores -->
+          <div class="kpi-card">
+            <div class="kpi-accent kpi-accent-verde"></div>
+            <div class="kpi-icon-wrap" style="background:#E9F7EF;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M22 12h-4l-3 9L9 3l-3 9H2" stroke="#27AE60" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="kpi-value">6<span style="font-size:16px;color:var(--texto-sub)">/7</span></div>
+            <div class="kpi-label">Sensores activos</div>
+            <div class="kpi-delta" style="color:var(--naranja);">1 con intermitencia</div>
+          </div>
+          <!-- Alertas pendientes -->
+          <div class="kpi-card">
+            <div class="kpi-accent kpi-accent-rojo"></div>
+            <div class="kpi-icon-wrap" style="background:#FDECEA;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4M12 17h.01" stroke="#C0392B" stroke-width="2" stroke-linecap="round"/></svg>
+            </div>
+            <div class="kpi-value" style="color:var(--rojo);">2</div>
+            <div class="kpi-label">Alertas pendientes</div>
+            <div class="kpi-delta kpi-delta-up">Requieren validación</div>
+          </div>
+        </div>
+
+        <!-- Main grid -->
+        <div class="dash-grid">
+          <div class="dash-left">
+            <!-- Chart -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Evolución del Nivel del Río Uruguay — Últimas 24 hs</div>
+                <span class="badge badge-naranja">ALERTA NARANJA</span>
+              </div>
+              <div class="chart-area">
+                <svg class="chart-svg" viewBox="0 0 700 160" preserveAspectRatio="none">
+                  <defs>
+                    <linearGradient id="chart-grad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="#2E86C1" stop-opacity=".35"/>
+                      <stop offset="100%" stop-color="#2E86C1" stop-opacity=".02"/>
+                    </linearGradient>
+                    <linearGradient id="chart-line-grad" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stop-color="#27AE60"/>
+                      <stop offset="60%" stop-color="#E67E22"/>
+                      <stop offset="100%" stop-color="#C0392B"/>
+                    </linearGradient>
+                  </defs>
+                  <!-- Grid lines -->
+                  <line x1="0" y1="40" x2="700" y2="40" stroke="#EEF2F6" stroke-width="1"/>
+                  <line x1="0" y1="80" x2="700" y2="80" stroke="#EEF2F6" stroke-width="1"/>
+                  <line x1="0" y1="120" x2="700" y2="120" stroke="#EEF2F6" stroke-width="1"/>
+                  <!-- Threshold lines -->
+                  <line x1="0" y1="55" x2="700" y2="55" stroke="#E67E22" stroke-width="1.5" stroke-dasharray="6 4" opacity=".7"/>
+                  <text x="5" y="50" font-size="9" fill="#E67E22" font-family="JetBrains Mono" opacity=".8">7.2 m (umbral)</text>
+                  <line x1="0" y1="30" x2="700" y2="30" stroke="#C0392B" stroke-width="1.5" stroke-dasharray="6 4" opacity=".7"/>
+                  <text x="5" y="25" font-size="9" fill="#C0392B" font-family="JetBrains Mono" opacity=".8">8.0 m (crítico)</text>
+                  <!-- Area fill -->
+                  <path d="M0,140 L0,130 C60,125 100,118 150,112 C200,106 240,100 290,90 C330,82 370,72 420,64 C460,57 500,50 550,42 C590,36 640,32 700,28 L700,140 Z" fill="url(#chart-grad)"/>
+                  <!-- Line -->
+                  <path d="M0,130 C60,125 100,118 150,112 C200,106 240,100 290,90 C330,82 370,72 420,64 C460,57 500,50 550,42 C590,36 640,32 700,28" fill="none" stroke="url(#chart-line-grad)" stroke-width="2.5" stroke-linecap="round"/>
+                  <!-- Current dot -->
+                  <circle cx="700" cy="28" r="5" fill="#C0392B"/>
+                  <circle cx="700" cy="28" r="9" fill="#C0392B" opacity=".2"/>
+                  <!-- Time labels -->
+                  <text x="0" y="155" font-size="9" fill="#9EB0BF" font-family="Inter">00:00</text>
+                  <text x="165" y="155" font-size="9" fill="#9EB0BF" font-family="Inter">06:00</text>
+                  <text x="330" y="155" font-size="9" fill="#9EB0BF" font-family="Inter">12:00</text>
+                  <text x="500" y="155" font-size="9" fill="#9EB0BF" font-family="Inter">18:00</text>
+                  <text x="655" y="155" font-size="9" fill="#9EB0BF" font-family="Inter">ahora</text>
+                </svg>
+              </div>
+            </div>
+
+            <!-- Map -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Mapa referencial de zonas y sensores</div>
+                <span class="badge badge-rojo" id="map-risk-badge">Zonas en riesgo</span>
+              </div>
+              <div id="real-map" class="real-map">
+                <div class="map-fallback">Cargando mapa referencial de Panambí y sensores...</div>
+              </div>
+              <div class="map-note">Mapa referencial de Panambí. Los puntos indican la ubicación aproximada de los sensores simulados del sistema local.</div>
+            </div>
+
+            <!-- Sensors -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Estado de sensores</div>
+                <button class="btn btn-ghost btn-sm">Ver todos</button>
+              </div>
+              <div class="sensor-grid">
+                <div class="sensor-item">
+                  <div class="sensor-name">S-01 Ribera Norte</div>
+                  <div class="sensor-value" style="color:var(--rojo);">7.84 m</div>
+                  <div class="sensor-status-line"><div class="sensor-dot sensor-dot-ok"></div><span class="sensor-status-text">Activo</span></div>
+                </div>
+                <div class="sensor-item">
+                  <div class="sensor-name">S-02 Bajo Uruguay</div>
+                  <div class="sensor-value" style="color:var(--naranja);">6.21 m</div>
+                  <div class="sensor-status-line"><div class="sensor-dot sensor-dot-ok"></div><span class="sensor-status-text">Activo</span></div>
+                </div>
+                <div class="sensor-item">
+                  <div class="sensor-name">S-03 Costa Sur</div>
+                  <div class="sensor-value" style="color:var(--verde-lt);">4.10 m</div>
+                  <div class="sensor-status-line"><div class="sensor-dot sensor-dot-warn"></div><span class="sensor-status-text">Intermitente</span></div>
+                </div>
+                <div class="sensor-item">
+                  <div class="sensor-name">S-04 Zona Alta</div>
+                  <div class="sensor-value" style="color:var(--verde-lt);">2.35 m</div>
+                  <div class="sensor-status-line"><div class="sensor-dot sensor-dot-ok"></div><span class="sensor-status-text">Activo</span></div>
+                </div>
+                <div class="sensor-item">
+                  <div class="sensor-name">S-05 Puente</div>
+                  <div class="sensor-value" style="color:var(--naranja);">5.80 m</div>
+                  <div class="sensor-status-line"><div class="sensor-dot sensor-dot-ok"></div><span class="sensor-status-text">Activo</span></div>
+                </div>
+                <div class="sensor-item">
+                  <div class="sensor-name">S-06 Arroyo</div>
+                  <div class="sensor-value" style="color:var(--verde-lt);">1.90 m</div>
+                  <div class="sensor-status-line"><div class="sensor-dot sensor-dot-ok"></div><span class="sensor-status-text">Activo</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right sidebar -->
+          <div class="dash-right">
+            <div class="card" style="flex:1;">
+              <div class="card-header">
+                <div class="card-title">Alertas recientes</div>
+                <span class="badge badge-rojo">2 pendientes</span>
+              </div>
+              <div class="alert-list">
+                <div class="alert-item alert-item-rojo" onclick="navigate('s-validar')">
+                  <div class="alert-item-top">
+                    <span class="alert-item-title">Nivel crítico S-01</span>
+                    <span class="alert-item-time">14:32</span>
+                  </div>
+                  <div class="alert-item-desc">Río superó 7.8 m en Ribera Norte. Pendiente validación.</div>
+                  <div style="margin-top:6px;"><span class="badge badge-rojo">PENDIENTE</span></div>
+                </div>
+                <div class="alert-item alert-item-naranja" onclick="navigate('s-validar')">
+                  <div class="alert-item-top">
+                    <span class="alert-item-title">Umbral naranja</span>
+                    <span class="alert-item-time">13:15</span>
+                  </div>
+                  <div class="alert-item-desc">Sensor S-02 superó 6.0 m (umbral naranja). Tendencia ascendente.</div>
+                  <div style="margin-top:6px;"><span class="badge badge-naranja">PENDIENTE</span></div>
+                </div>
+                <div class="alert-item alert-item-celeste">
+                  <div class="alert-item-top">
+                    <span class="alert-item-title">Alerta manual emitida</span>
+                    <span class="alert-item-time">11:48</span>
+                  </div>
+                  <div class="alert-item-desc">Aviso preventivo a vecinos Ribera Norte. Operador: J. López.</div>
+                  <div style="margin-top:6px;"><span class="badge badge-celeste">EMITIDA</span></div>
+                </div>
+                <div class="alert-item">
+                  <div class="alert-item-top">
+                    <span class="alert-item-title">Sensor S-03 intermitente</span>
+                    <span class="alert-item-time">10:20</span>
+                  </div>
+                  <div class="alert-item-desc">Falla de conectividad en S-03 Costa Sur. Técnico notificado.</div>
+                  <div style="margin-top:6px;"><span class="badge badge-gris">INFO</span></div>
+                </div>
+                <div class="alert-item" style="border-left-color:var(--verde-lt);">
+                  <div class="alert-item-top">
+                    <span class="alert-item-title">Nivel estabilizado</span>
+                    <span class="alert-item-time">08:05</span>
+                  </div>
+                  <div class="alert-item-desc">Sensor S-04 Zona Alta. Nivel stable en 2.35 m, sin riesgo.</div>
+                  <div style="margin-top:6px;"><span class="badge badge-verde">RESUELTO</span></div>
+                </div>
+              </div>
+              <button class="btn btn-outline btn-full" style="margin-top:14px;" onclick="navigate('s-historial')">Ver historial completo</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================
+     SCREEN 3: VALIDAR ALERTA
+================================================ -->
+<div id="s-validar" class="screen">
+  <div class="app-layout">
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="topbar-logo">
+          <div class="topbar-logo-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 2L4 6v6c0 5.5 3.4 10.7 8 12 4.6-1.3 8-6.5 8-12V6L12 2z" fill="white"/></svg></div>
+          <div><div class="topbar-logo-text">SAT Inundaciones</div><div class="topbar-logo-sub">Panambí, Misiones</div></div>
+        </div>
+        <div class="topbar-status"><div class="status-dot alerta"></div><span class="status-text">⚠ ALERTA ACTIVA</span></div>
+      </div>
+      <div class="topbar-right">
+        <span class="topbar-time" id="val-clock">—</span>
+        <button class="theme-toggle-btn" title="Cambiar tema"><span>🌙</span></button>
+        <div class="topbar-user"><div class="topbar-avatar">JL</div><span class="topbar-username">J. López</span></div>
+      </div>
+    </div>
+    <div class="main-area">
+      <div class="sidebar">
+        <div class="nav-section-title">Monitoreo</div>
+        <div class="nav-item" onclick="navigate('s-dash')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/></svg>
+          Panel Principal
+        </div>
+        <div class="nav-item active" onclick="navigate('s-validar')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.8"/><path d="M12 8v4l3 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          Validar Alerta
+          <span class="nav-badge">2</span>
+        </div>
+        <div class="nav-section-title">Acciones</div>
+        <div class="nav-item" onclick="navigate('s-emit')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Emitir Alerta Manual
+        </div>
+        <div class="nav-section-title">Gestión</div>
+        <div class="nav-item" onclick="navigate('s-contactos')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Contactos
+        </div>
+        <div class="nav-item admin-only" onclick="navigate('s-usuarios')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM19 8v6M22 11h-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> Usuarios</div>
+        <div class="nav-item" onclick="navigate('s-historial')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Historial
+        </div>
+      </div>
+      <div class="content">
+        <div class="page-header">
+          <div>
+            <div class="page-title">Validar Alerta</div>
+            <div class="page-sub">Alerta N° 2024-0089 — generada automáticamente a las 14:32 hs</div>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="navigate('s-dash')">
+            ← Volver al panel
+          </button>
+        </div>
+
+        <!-- Alert info box -->
+        <div style="background:linear-gradient(90deg,#FDECEA,#FEF9F9);border:2px solid var(--rojo);border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;gap:16px;align-items:center;">
+          <div style="width:44px;height:44px;background:var(--rojo);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke="white" stroke-width="2" fill="white" opacity=".3"/><path d="M12 9v4M12 17h.01" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
+          </div>
+          <div>
+            <div style="font-size:15px;font-weight:800;color:var(--rojo);">ALERTA ROJA AUTOMÁTICA — Nivel Crítico Detectado</div>
+            <div style="font-size:13px;color:#5D1A1A;margin-top:3px;">Sensor S-01 Ribera Norte superó el umbral de alerta. Se requiere validación del operador en los próximos <strong>15 minutos</strong>.</div>
+          </div>
+        </div>
+
+        <div class="validar-grid">
+          <!-- Left: data -->
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            <!-- Data card -->
+            <div class="card">
+              <div class="card-title" style="margin-bottom:16px;">Datos de la alerta</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div style="background:var(--gris-bg);border-radius:8px;padding:12px;">
+                  <div style="font-size:11px;color:var(--texto-sub);font-weight:600;margin-bottom:4px;">Nivel del río</div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--rojo);">7.84 m</div>
+                </div>
+                <div style="background:var(--gris-bg);border-radius:8px;padding:12px;">
+                  <div style="font-size:11px;color:var(--texto-sub);font-weight:600;margin-bottom:4px;">Umbral superado</div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--naranja);">7.20 m</div>
+                </div>
+                <div style="background:var(--gris-bg);border-radius:8px;padding:12px;">
+                  <div style="font-size:11px;color:var(--texto-sub);font-weight:600;margin-bottom:4px;">Zona afectada</div>
+                  <div style="font-size:14px;font-weight:700;color:var(--texto-base);">Ribera Norte</div>
+                </div>
+                <div style="background:var(--gris-bg);border-radius:8px;padding:12px;">
+                  <div style="font-size:11px;color:var(--texto-sub);font-weight:600;margin-bottom:4px;">Sensor responsable</div>
+                  <div style="font-size:14px;font-weight:700;color:var(--texto-base);">S-01 ✔ Activo</div>
+                </div>
+              </div>
+              <div style="margin-top:14px;">
+                <div style="font-size:12px;font-weight:600;color:var(--texto-sub);margin-bottom:4px;">Nivel de riesgo sugerido</div>
+                <div style="display:flex;align-items:center;gap:12px;">
+                  <span class="badge badge-rojo" style="font-size:13px;padding:6px 16px;">ROJO — ALTO</span>
+                  <div style="flex:1;">
+                    <div class="riesgo-bar"><div class="riesgo-fill" style="width:82%;"></div></div>
+                    <div style="font-size:10px;color:var(--texto-sub);">82% del nivel máximo registrado</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Historial reciente -->
+            <div class="card">
+              <div class="card-title" style="margin-bottom:12px;">Historial reciente — Sensor S-01</div>
+              <div class="hist-item">
+                <div class="hist-icon" style="background:#FDECEA;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" stroke="#C0392B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                <div class="hist-text"><div class="hist-title">7.84 m — subiendo</div><div class="hist-time">Hoy 14:32 · Umbral superado</div></div>
+                <span class="badge badge-rojo">Rojo</span>
+              </div>
+              <div class="hist-item">
+                <div class="hist-icon" style="background:#FEF3E2;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" stroke="#E67E22" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                <div class="hist-text"><div class="hist-title">7.21 m — en ascenso</div><div class="hist-time">Hoy 13:15 · Umbral naranja</div></div>
+                <span class="badge badge-naranja">Naranja</span>
+              </div>
+              <div class="hist-item">
+                <div class="hist-icon" style="background:#EBF5FB;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><line x1="5" y1="12" x2="19" y2="12" stroke="#2E86C1" stroke-width="2" stroke-linecap="round"/></svg></div>
+                <div class="hist-text"><div class="hist-title">6.80 m — estable</div><div class="hist-time">Hoy 10:00 · Nivel normal</div></div>
+                <span class="badge badge-celeste">Normal</span>
+              </div>
+              <div class="hist-item" style="border:none;">
+                <div class="hist-icon" style="background:#E9F7EF;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6" stroke="#27AE60" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                <div class="hist-text"><div class="hist-title">6.20 m — bajando</div><div class="hist-time">Ayer 22:00 · Ciclo anterior</div></div>
+                <span class="badge badge-verde">Bajo</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: actions -->
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            <div class="card">
+              <div class="card-title" style="margin-bottom:14px;">Observaciones del operador</div>
+              <div class="input-group">
+                <label>Motivo / observación (recomendado)</label>
+                <textarea id="val-obs" placeholder="Ej: Confirmado con vecino de zona Norte. Tendencia sostenida en las últimas 3 horas..."></textarea>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-title" style="margin-bottom:14px;">Acción sobre la alerta</div>
+              <div class="val-action-row">
+                <button class="btn btn-success btn-lg btn-full" onclick="openModal('m-validar')">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  Validar alerta
+                </button>
+                <button class="btn btn-outline btn-lg btn-full" style="border-color:var(--rojo-lt);color:var(--rojo);" onclick="openModal('m-rechazar')">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/><line x1="15" y1="9" x2="9" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="9" y1="9" x2="15" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                  Rechazar alerta
+                </button>
+              </div>
+            </div>
+            <div class="card" style="background:rgba(46, 134, 193, 0.08);border-color:#B8D8EE;">
+              <div style="font-size:11px;font-weight:700;color:var(--azul-mid);margin-bottom:6px;">ℹ Protocolo de validación</div>
+              <div style="font-size:12px;color:var(--texto-sub);line-height:1.6;">
+                <strong>Validar</strong>: confirma la alerta y notifica a contactos registrados.<br>
+                <strong>Rechazar</strong>: descarta la alerta cuando corresponde, dejando justificación.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================
+     SCREEN 4: REPORTAR INCIDENCIA (mobile)
+================================================ -->
+<div id="s-reporte" class="screen" style="flex-direction:row;">
+  <div class="mobile-frame-wrap">
+    <div>
+      <div style="text-align:center;margin-bottom:16px;">
+        <span style="font-size:12px;font-weight:600;color:var(--gris-lt);">Vista Ciudadano — Dispositivo Móvil</span>
+      </div>
+      <div class="mobile-frame">
+        <div class="mobile-header">
+          <div class="mobile-header-top">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4M12 17h.01" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
+            <h2>Reportar Incidencia</h2>
+          </div>
+          <p>Defensa Civil · Municipalidad de Panambí</p>
+          <button class="public-back-btn" id="rep-back-small" onclick="goLogin()">← Volver al inicio</button>
+        </div>
+        <div class="mobile-body" id="mobile-form-body">
+          <div class="error-msg" id="rep-error">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/><line x1="15" y1="9" x2="9" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="9" y1="9" x2="15" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            Completar los campos obligatorios.
+          </div>
+          <div class="input-group">
+            <label>Nombre y apellido *</label>
+            <input type="text" id="rep-nombre" placeholder="Ej: Carlos Gómez">
+          </div>
+          <div class="input-group">
+            <label>DNI *</label>
+            <input type="text" id="rep-dni" placeholder="Solo números" inputmode="numeric" maxlength="8">
+          </div>
+          <div class="input-group">
+            <label>Zona aproximada *</label>
+            <select id="rep-zona">
+              <option value="">Seleccionar...</option>
+              <option>Ribera Norte</option>
+              <option>Bajo Uruguay</option>
+              <option>Costa Sur</option>
+              <option>Zona Alta</option>
+              <option>Puente</option>
+              <option>Arroyo</option>
+              <option>Otra zona</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label>Tipo de incidencia *</label>
+            <select id="rep-tipo">
+              <option value="">Seleccionar...</option>
+              <option>Inundación de calles</option>
+              <option>Desborde de zanja o arroyo</option>
+              <option>Daños en vivienda</option>
+              <option>Persona en riesgo</option>
+              <option>Corte de camino</option>
+              <option>Otro</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label>Descripción breve *</label>
+            <textarea id="rep-desc" placeholder="Describa lo que observa..."></textarea>
+          </div>
+          <div class="input-group">
+            <label>Ubicación o referencia *</label>
+            <input type="text" id="rep-loc" placeholder="Ej: Calle Mitre 420, esquina frente al almacén">
+          </div>
+          <div class="input-group">
+            <label>Imagen (opcional)</label>
+            <input type="file" id="rep-img" accept="image/png,image/jpeg,image/webp" style="display:none;">
+            <div class="file-upload-area" id="rep-img-area" onclick="document.getElementById('rep-img').click()">
+              <div class="file-upload-icon">📷</div>
+              <div class="file-upload-text" id="rep-img-text">Tocar para adjuntar foto o seleccionar archivo</div>
+              <img id="rep-img-preview" alt="Vista previa de la incidencia" style="display:none;margin-top:10px;max-width:100%;max-height:120px;border-radius:8px;border:1px solid var(--gris-border);object-fit:cover;">
+            </div>
+          </div>
+        </div>
+        <div class="incidencia-success" id="rep-success">
+          <div class="success-icon-big">✅</div>
+          <div class="success-title">Incidencia reportada correctamente</div>
+          <div class="success-desc" style="margin-bottom:20px;">Defensa Civil recibió su reporte. Se generó una alerta pendiente para validación interna.<br>N° de seguimiento: <strong>INC-2026-0412</strong></div>
+          <button class="btn btn-primary btn-full btn-lg" onclick="volverPantallaPrincipal()">Volver a la pantalla principal</button>
+        </div>
+        <div class="mobile-form-footer" id="mobile-form-footer" style="padding:16px 20px;">
+          <button class="btn btn-primary btn-full btn-lg" onclick="sendReporte()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Enviar Reporte
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================
+     SCREEN 5: GESTIÓN CONTACTOS
+================================================ -->
+<div id="s-contactos" class="screen">
+  <div class="app-layout">
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="topbar-logo"><div class="topbar-logo-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 2L4 6v6c0 5.5 3.4 10.7 8 12 4.6-1.3 8-6.5 8-12V6L12 2z" fill="white"/></svg></div><div><div class="topbar-logo-text">SAT Inundaciones</div><div class="topbar-logo-sub">Panambí, Misiones</div></div></div>
+        <div class="topbar-status"><div class="status-dot alerta"></div><span class="status-text">⚠ ALERTA ACTIVA</span></div>
+      </div>
+      <div class="topbar-right">
+        <button class="theme-toggle-btn" title="Cambiar tema"><span>🌙</span></button>
+        <div class="topbar-user"><div class="topbar-avatar">JL</div><span class="topbar-username">J. López</span></div>
+      </div>
+    </div>
+    <div class="main-area">
+      <div class="sidebar">
+        <div class="nav-section-title">Monitoreo</div>
+        <div class="nav-item" onclick="navigate('s-dash')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/></svg> Panel Principal</div>
+        <div class="nav-item" onclick="navigate('s-validar')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.8"/><path d="M12 8v4l3 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> Validar Alerta <span class="nav-badge">2</span></div>
+        <div class="nav-section-title">Acciones</div>
+        <div class="nav-item" onclick="navigate('s-emit')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> Emitir Alerta Manual</div>
+        <div class="nav-section-title">Gestión</div>
+        <div class="nav-item active"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> Contactos</div>
+        <div class="nav-item admin-only" onclick="navigate('s-usuarios')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM19 8v6M22 11h-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> Usuarios</div>
+        <div class="nav-item" onclick="navigate('s-historial')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> Historial</div>
+      </div>
+      <div class="content">
+        <div class="page-header">
+          <div>
+            <div class="page-title">Gestión de Contactos</div>
+            <div class="page-sub">Vecinos, instituciones y autoridades para notificación de alertas</div>
+          </div>
+          <button class="btn btn-primary" onclick="addContact()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19" stroke="white" stroke-width="2" stroke-linecap="round"/><line x1="5" y1="12" x2="19" y2="12" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
+            Agregar contacto
+          </button>
+        </div>
+        <!-- Quick stats -->
+        <div class="kpi-grid" style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+          <div class="card" style="flex:1;min-width:140px;padding:14px 18px;">
+            <div class="card-title">Total contactos</div>
+            <div class="kpi-value" style="font-size:24px;font-weight:800;color:var(--azul-deep);">48</div>
+          </div>
+          <div class="card" style="flex:1;min-width:140px;padding:14px 18px;">
+            <div class="card-title">Activos</div>
+            <div class="kpi-value" style="font-size:24px;font-weight:800;color:var(--verde-lt);">44</div>
+          </div>
+          <div class="card" style="flex:1;min-width:140px;padding:14px 18px;">
+            <div class="card-title">Instituciones</div>
+            <div class="kpi-value" style="font-size:24px;font-weight:800;color:var(--azul-mid);">8</div>
+          </div>
+          <div class="card" style="flex:1;min-width:140px;padding:14px 18px;">
+            <div class="card-title">Incompletos</div>
+            <div class="kpi-value" style="font-size:24px;font-weight:800;color:var(--naranja);">4</div>
+          </div>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden;">
+          <div style="padding:14px 18px;border-bottom:1px solid var(--gris-border);display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+            <input type="text" id="contact-search" placeholder="🔍  Buscar contacto..." style="flex:1;min-width:200px;padding:8px 14px;border:1.5px solid #CDD9E2;border-radius:8px;font-family:Inter,sans-serif;font-size:13px;outline:none;">
+            <select id="contact-filter-tipo" style="padding:8px 12px;border:1.5px solid #CDD9E2;border-radius:8px;font-size:13px;font-family:Inter,sans-serif;background:#fff;color:var(--texto-base);">
+              <option>Todos los tipos</option>
+              <option value="Vecino ribereño">Vecino ribereño</option>
+              <option value="Institución">Institución</option>
+              <option value="Autoridad">Autoridad</option>
+            </select>
+            <select id="contact-filter-zona" style="padding:8px 12px;border:1.5px solid #CDD9E2;border-radius:8px;font-size:13px;font-family:Inter,sans-serif;background:#fff;color:var(--texto-base);">
+              <option>Todas las zonas</option>
+              <option value="Ribera Norte">Ribera Norte</option>
+              <option value="Bajo Uruguay">Bajo Uruguay</option>
+              <option value="Costa Sur">Costa Sur</option>
+              <option value="Zona Alta">Zona Alta</option>
+              <option value="Todo Panambí">Todo Panambí</option>
+            </select>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>Tipo</th>
+                  <th>Zona</th>
+                  <th>Teléfono</th>
+                  <th>Canal notificación</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Populated dynamically by contacts.js -->
+              </tbody>
+            </table>
+          </div>
+          <div style="padding:14px 18px;border-top:1px solid var(--gris-border);display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:12px;color:var(--texto-sub);">Mostrando 7 de 48 contactos</span>
+            <div style="display:flex;gap:6px;">
+              <button class="btn btn-ghost btn-sm">← Anterior</button>
+              <button class="btn btn-ghost btn-sm">Siguiente →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================
+     SCREEN 6: HISTORIAL
+================================================ -->
+<div id="s-historial" class="screen">
+  <div class="app-layout">
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="topbar-logo"><div class="topbar-logo-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 2L4 6v6c0 5.5 3.4 10.7 8 12 4.6-1.3 8-6.5 8-12V6L12 2z" fill="white"/></svg></div><div><div class="topbar-logo-text">SAT Inundaciones</div><div class="topbar-logo-sub">Panambí, Misiones</div></div></div>
+        <div class="topbar-status"><div class="status-dot alerta"></div><span class="status-text">⚠ ALERTA ACTIVA</span></div>
+      </div>
+      <div class="topbar-right">
+        <button class="theme-toggle-btn" title="Cambiar tema"><span>🌙</span></button>
+        <div class="topbar-user"><div class="topbar-avatar">JL</div><span class="topbar-username">J. López</span></div>
+      </div>
+    </div>
+    <div class="main-area">
+      <div class="sidebar">
+        <div class="nav-section-title">Monitoreo</div>
+        <div class="nav-item" onclick="navigate('s-dash')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/></svg> Panel Principal</div>
+        <div class="nav-item" onclick="navigate('s-validar')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.8"/><path d="M12 8v4l3 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> Validar Alerta <span class="nav-badge">2</span></div>
+        <div class="nav-section-title">Acciones</div>
+        <div class="nav-item" onclick="navigate('s-emit')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> Emitir Alerta Manual</div>
+        <div class="nav-section-title">Gestión</div>
+        <div class="nav-item" onclick="navigate('s-contactos')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> Contactos</div>
+        <div class="nav-item admin-only" onclick="navigate('s-usuarios')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM19 8v6M22 11h-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> Usuarios</div>
+        <div class="nav-item active"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> Historial</div>
+      </div>
+      <div class="content">
+        <div class="page-header">
+          <div>
+            <div class="page-title">Historial de Eventos</div>
+            <div class="page-sub">Mediciones, alertas automáticas, alertas manuales e incidencias reportadas</div>
+          </div>
+          <button class="btn btn-outline btn-sm" onclick="alert('Historial exportado a CSV')">⬇ Exportar CSV</button>
+        </div>
+        <div class="filter-bar">
+          <label>Fecha:</label>
+          <input type="date" style="padding:7px 12px;border:1.5px solid #CDD9E2;border-radius:7px;font-size:13px;font-family:'Inter',sans-serif;background:#fff;color:var(--texto-base);">
+          <span style="color:var(--gris-lt);font-size:12px;">hasta</span>
+          <input type="date" style="padding:7px 12px;border:1.5px solid #CDD9E2;border-radius:7px;font-size:13px;font-family:'Inter',sans-serif;background:#fff;color:var(--texto-base);">
+          <label>Zona:</label>
+          <select><option>Todas</option><option>Ribera Norte</option><option>Bajo Uruguay</option><option>Costa Sur</option><option>Zona Alta</option><option>Puente</option><option>Arroyo</option><option>Sistema</option></select>
+          <label>Riesgo:</label>
+          <select><option>Todos</option><option>Rojo</option><option>Naranja</option><option>Verde</option></select>
+          <label>Tipo:</label>
+          <select><option>Todos</option><option>Medición</option><option>Alerta automática</option><option>Alerta manual</option><option>Incidencia</option></select>
+          <button class="btn btn-primary btn-sm">Aplicar filtros</button>
+          <button class="btn btn-ghost btn-sm" onclick="clearHistoryFilters()">Limpiar filtros</button>
+        </div>
+
+        <!-- Summary -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;">
+          <div class="card" style="padding:14px;border-left:4px solid var(--azul-mid);">
+            <div class="card-title">Mediciones</div>
+            <div style="font-size:22px;font-weight:800;color:var(--azul-mid);">288</div>
+            <div style="font-size:11px;color:var(--texto-sub);">Últimas 24 hs</div>
+          </div>
+          <div class="card" style="padding:14px;border-left:4px solid var(--rojo);">
+            <div class="card-title">Alertas automáticas</div>
+            <div style="font-size:22px;font-weight:800;color:var(--rojo);">3</div>
+            <div style="font-size:11px;color:var(--texto-sub);">2 validadas · 1 rechazada</div>
+          </div>
+          <div class="card" style="padding:14px;border-left:4px solid var(--naranja);">
+            <div class="card-title">Alertas manuales</div>
+            <div style="font-size:22px;font-weight:800;color:var(--naranja);">1</div>
+            <div style="font-size:11px;color:var(--texto-sub);">Emitida hoy 11:48</div>
+          </div>
+          <div class="card" style="padding:14px;border-left:4px solid var(--celeste);">
+            <div class="card-title">Incidencias</div>
+            <div style="font-size:22px;font-weight:800;color:var(--celeste);">5</div>
+            <div style="font-size:11px;color:var(--texto-sub);">3 resueltas · 2 en revisión</div>
+          </div>
+        </div>
+
+        <!-- Event list (Populated dynamically by history.js) -->
+        
+        <div style="text-align:center;margin-top:16px;">
+          <button class="btn btn-ghost btn-sm" onclick="alert('Se cargaron eventos adicionales del archivo de registro.')">Cargar más eventos...</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ================================================
+     SCREEN 7: ADMINISTRACIÓN DE USUARIOS
+================================================ -->
+<div id="s-usuarios" class="screen">
+  <div class="app-layout">
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="topbar-logo"><div class="topbar-logo-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 2L4 6v6c0 5.5 3.4 10.7 8 12 4.6-1.3 8-6.5 8-12V6L12 2z" fill="white"/></svg></div><div><div class="topbar-logo-text">SAT Inundaciones</div><div class="topbar-logo-sub">Panambí, Misiones</div></div></div>
+        <div class="topbar-status"><div class="status-dot normal"></div><span class="status-text">ADMINISTRACIÓN</span></div>
+      </div>
+      <div class="topbar-right">
+        <button class="theme-toggle-btn" title="Cambiar tema"><span>🌙</span></button>
+        <div class="topbar-user"><div class="topbar-avatar">AD</div><span class="topbar-username">Admin</span></div>
+      </div>
+    </div>
+    <div class="main-area">
+      <div class="sidebar">
+        <div class="nav-section-title">Monitoreo</div>
+        <div class="nav-item" onclick="navigate('s-dash')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/></svg> Panel Principal</div>
+        <div class="nav-item" onclick="navigate('s-validar')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.8"/><path d="M12 8v4l3 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> Validar Alerta <span class="nav-badge">2</span></div>
+        <div class="nav-section-title">Acciones</div>
+        <div class="nav-item" onclick="navigate('s-emit')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> Emitir Alerta Manual</div>
+        <div class="nav-section-title">Gestión</div>
+        <div class="nav-item" onclick="navigate('s-contactos')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> Contactos</div>
+        <div class="nav-item admin-only active" onclick="navigate('s-usuarios')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM19 8v6M22 11h-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> Usuarios</div>
+        <div class="nav-item" onclick="navigate('s-historial')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> Historial</div>
+      </div>
+      <div class="content">
+        <div class="page-header">
+          <div>
+            <div class="page-title">Administración de Usuarios</div>
+            <div class="page-sub">Alta y baja de operadores autorizados del sistema</div>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="navigate('s-dash')">← Volver</button>
+        </div>
+
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title" style="margin-bottom:16px;">Agregar nuevo usuario</div>
+          <div class="admin-user-grid">
+            <div class="input-group"><label>Nombre y apellido *</label><input id="usr-nombre" type="text" placeholder="Ej. Ana Martínez"></div>
+            <div class="input-group"><label>Usuario *</label><input id="usr-usuario" type="text" placeholder="Ej. amartinez"></div>
+            <div class="input-group"><label>Contraseña *</label><input id="usr-password" type="password" placeholder="Mínimo 4 caracteres"></div>
+            <div class="input-group"><label>Rol *</label><select id="usr-rol"><option>Operador Defensa Civil</option><option>Operador Municipalidad</option><option>Administrador</option></select></div>
+          </div>
+          <button class="btn btn-primary" onclick="createUser()">Agregar usuario</button>
+        </div>
+
+        <div class="card" style="padding:0;overflow:hidden;">
+          <div style="padding:14px 18px;border-bottom:1px solid var(--gris-border);display:flex;align-items:center;justify-content:space-between;gap:12px;">
+            <div class="card-title">Usuarios registrados</div>
+            <span style="font-size:12px;color:var(--texto-sub);">Solo el usuario admin puede gestionar esta sección</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Nombre</th><th>Usuario</th><th>Rol</th><th>Estado</th><th>Acción</th></tr></thead>
+              <tbody id="users-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================
+     SCREEN 8: EMITIR ALERTA MANUAL
+================================================ -->
+<div id="s-emit" class="screen">
+  <div class="app-layout">
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="topbar-logo"><div class="topbar-logo-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 2L4 6v6c0 5.5 3.4 10.7 8 12 4.6-1.3 8-6.5 8-12V6L12 2z" fill="white"/></svg></div><div><div class="topbar-logo-text">SAT Inundaciones</div><div class="topbar-logo-sub">Panambí, Misiones</div></div></div>
+        <div class="topbar-status"><div class="status-dot alerta"></div><span class="status-text">⚠ ALERTA ACTIVA</span></div>
+      </div>
+      <div class="topbar-right">
+        <button class="theme-toggle-btn" title="Cambiar tema"><span>🌙</span></button>
+        <div class="topbar-user"><div class="topbar-avatar">JL</div><span class="topbar-username">J. López</span></div>
+      </div>
+    </div>
+    <div class="main-area">
+      <div class="sidebar">
+        <div class="nav-section-title">Monitoreo</div>
+        <div class="nav-item" onclick="navigate('s-dash')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/></svg> Panel Principal</div>
+        <div class="nav-item" onclick="navigate('s-validar')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.8"/><path d="M12 8v4l3 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> Validar Alerta <span class="nav-badge">2</span></div>
+        <div class="nav-section-title">Acciones</div>
+        <div class="nav-item active"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> Emitir Alerta Manual</div>
+        <div class="nav-section-title">Gestión</div>
+        <div class="nav-item" onclick="navigate('s-contactos')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> Contactos</div>
+        <div class="nav-item admin-only" onclick="navigate('s-usuarios')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM19 8v6M22 11h-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> Usuarios</div>
+        <div class="nav-item" onclick="navigate('s-historial')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> Historial</div>
+      </div>
+      <div class="content" style="max-width:760px;">
+        <div class="page-header">
+          <div>
+            <div class="page-title">Emitir Alerta Manual</div>
+            <div class="page-sub">Proceso en 3 pasos — acción registrada con tu usuario</div>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="navigate('s-dash')">← Volver</button>
+        </div>
+        <!-- Steps indicator -->
+        <div class="emit-steps" style="margin-bottom:24px;">
+          <div class="emit-step active" id="estep-1">
+            <div class="emit-step-num">1</div>
+            <span class="emit-step-label">Datos de la alerta</span>
+          </div>
+          <div class="emit-step-divider"></div>
+          <div class="emit-step" id="estep-2">
+            <div class="emit-step-num">2</div>
+            <span class="emit-step-label">Destinatarios</span>
+          </div>
+          <div class="emit-step-divider"></div>
+          <div class="emit-step" id="estep-3">
+            <div class="emit-step-num">3</div>
+            <span class="emit-step-label">Confirmar y enviar</span>
+          </div>
+        </div>
+
+        <!-- Step 1 -->
+        <div id="emit-step-1">
+          <div class="card" style="margin-bottom:16px;">
+            <div class="card-title" style="margin-bottom:16px;">Paso 1 de 3 — Datos de la alerta</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+              <div class="input-group" style="margin-bottom:0;">
+                <label>Nivel de riesgo *</label>
+                <select id="emit-riesgo">
+                  <option>Seleccionar...</option>
+                  <option selected>🔴 Alerta Roja — Riesgo Alto</option>
+                  <option>🟠 Alerta Naranja — Riesgo Medio</option>
+                  <option>🟡 Alerta Amarilla — Preventiva</option>
+                </select>
+              </div>
+              <div class="input-group" style="margin-bottom:0;">
+                <label>Zona afectada *</label>
+                <select id="emit-zona">
+                  <option>Seleccionar...</option>
+                  <option selected>Ribera Norte</option>
+                  <option>Bajo Uruguay</option>
+                  <option>Costa Sur</option>
+                  <option>Zona Alta</option>
+                  <option>Todo Panambí</option>
+                </select>
+              </div>
+            </div>
+            <div class="input-group" style="margin-top:16px;">
+              <label>Mensaje de la alerta *</label>
+              <textarea id="emit-msg" rows="3" placeholder="Redacte el aviso que recibirán los contactos notificados...">⚠ ALERTA ROJA — Defensa Civil Panambí: Se detectó desborde inminente del Río Uruguay en Ribera Norte. Prepare su kit de emergencia y esté atento a instrucciones. Evacuar solo si se lo indican. Más info: 376-422-0011.</textarea>
+            </div>
+            <div class="input-group">
+              <label>Canal de envío</label>
+              <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                <label style="display:flex;align-items:center;gap:6px;font-weight:500;cursor:pointer;"><input type="checkbox" checked> 📱 WhatsApp</label>
+                <label style="display:flex;align-items:center;gap:6px;font-weight:500;cursor:pointer;"><input type="checkbox" checked> 💬 SMS</label>
+                <label style="display:flex;align-items:center;gap:6px;font-weight:500;cursor:pointer;"><input type="checkbox"> 📞 Llamada</label>
+                <label style="display:flex;align-items:center;gap:6px;font-weight:500;cursor:pointer;"><input type="checkbox"> 📢 Altoparlante</label>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:flex-end;">
+            <button class="btn btn-primary btn-lg" onclick="emitStep(2)">Siguiente → Destinatarios</button>
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div id="emit-step-2" style="display:none;">
+          <div class="card" style="margin-bottom:16px;">
+            <div class="card-title" style="margin-bottom:16px;">Paso 2 de 3 — Destinatarios</div>
+            <div id="emit-dest-summary" style="background:rgba(46, 134, 193, 0.08);border:1.5px solid #B8D8EE;border-radius:10px;padding:14px;margin-bottom:16px;font-size:13px;color:var(--azul-mid);">
+              Seleccione una zona para cargar los destinatarios reales desde la base de datos.
+            </div>
+            <div id="emit-dest-filters" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
+              <label style="display:flex;align-items:center;gap:6px;font-weight:500;cursor:pointer;padding:8px 12px;background:var(--gris-bg);border-radius:8px;"><input type="checkbox" data-tipo="Vecino ribereño" checked onchange="applyRecipientFilters()"> Vecinos ribereños (0)</label>
+              <label style="display:flex;align-items:center;gap:6px;font-weight:500;cursor:pointer;padding:8px 12px;background:var(--gris-bg);border-radius:8px;"><input type="checkbox" data-tipo="Institución" checked onchange="applyRecipientFilters()"> Instituciones (0)</label>
+              <label style="display:flex;align-items:center;gap:6px;font-weight:500;cursor:pointer;padding:8px 12px;background:var(--gris-bg);border-radius:8px;"><input type="checkbox" data-tipo="Autoridad" checked onchange="applyRecipientFilters()"> Autoridades (0)</label>
+            </div>
+            <div style="max-height:260px;overflow-y:auto;border:1px solid var(--gris-border);border-radius:8px;">
+              <table style="width:100%;border-collapse:collapse;">
+                <thead><tr style="background:var(--gris-bg);"><th style="padding:8px 12px;font-size:11px;color:var(--texto-sub);font-weight:700;text-align:left;">Nombre</th><th style="padding:8px 12px;font-size:11px;color:var(--texto-sub);font-weight:700;text-align:left;">Tipo</th><th style="padding:8px 12px;font-size:11px;color:var(--texto-sub);font-weight:700;text-align:left;">Zona</th><th style="padding:8px 12px;font-size:11px;color:var(--texto-sub);font-weight:700;text-align:left;">Canal</th><th style="padding:8px 12px;font-size:11px;color:var(--texto-sub);font-weight:700;text-align:left;">Incluir</th></tr></thead>
+                <tbody id="emit-dest-tbody">
+                  <tr><td colspan="5" style="padding:14px;text-align:center;color:var(--texto-sub);font-size:13px;">Cargando destinatarios...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;">
+            <button class="btn btn-ghost btn-lg" onclick="emitStep(1)">← Volver</button>
+            <button class="btn btn-primary btn-lg" onclick="emitStep(3)">Siguiente → Confirmar</button>
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div id="emit-step-3" style="display:none;">
+          <div class="card" style="margin-bottom:16px;border:2px solid var(--rojo);">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+              <div style="width:40px;height:40px;background:var(--rojo);border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div class="card-title" style="font-size:15px;color:var(--rojo);">Paso 3 de 3 — Revisar y confirmar</div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;background:var(--gris-bg);border-radius:10px;padding:14px;margin-bottom:14px;">
+              <div><div style="font-size:11px;color:var(--texto-sub);font-weight:600;margin-bottom:2px;">Nivel de riesgo</div><span class="badge badge-rojo" id="emit-res-riesgo">ALERTA ROJA</span></div>
+              <div><div style="font-size:11px;color:var(--texto-sub);font-weight:600;margin-bottom:2px;">Zona</div><div style="font-size:14px;font-weight:700;" id="emit-res-zona">Ribera Norte</div></div>
+              <div><div style="font-size:11px;color:var(--texto-sub);font-weight:600;margin-bottom:2px;">Destinatarios</div><div style="font-size:14px;font-weight:700;" id="emit-res-contactos">28 contactos</div></div>
+              <div><div style="font-size:11px;color:var(--texto-sub);font-weight:600;margin-bottom:2px;">Canales</div><div style="font-size:13px;" id="emit-res-canales">📱 WhatsApp · 💬 SMS</div></div>
+            </div>
+            <div style="background:var(--gris-bg);border-radius:8px;padding:12px;font-size:13px;color:var(--texto-base);line-height:1.5;border:1px solid var(--gris-border);">
+              <strong>Mensaje:</strong> <span id="emit-res-msg">⚠ ALERTA ROJA — Defensa Civil Panambí: Se detectó desborde inminente del Río Uruguay en Ribera Norte...</span>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;">
+            <button class="btn btn-ghost btn-lg" onclick="emitStep(2)">← Volver</button>
+            <button class="btn btn-danger btn-lg" onclick="openModal('m-emit-confirm')">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Emitir alerta ahora
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================
+     MODALES
+================================================ -->
+<!-- Modal: Validar -->
+<div class="modal-overlay" id="m-validar">
+  <div class="modal-box">
+    <div class="modal-icon" style="background:#E9F7EF;"><svg width="28" height="28" viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12" stroke="#27AE60" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <div class="modal-title">¿Confirmar validación?</div>
+    <div class="modal-desc">Al validar, la alerta será notificada a todos los contactos de la zona Ribera Norte. Esta acción quedará registrada con tu usuario y hora actual.</div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('m-validar')">Cancelar</button>
+      <button class="btn btn-success btn-lg" onclick="handleAlertAction('m-validar','Alerta validada y notificaciones enviadas.')">Confirmar y enviar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Rechazar -->
+<div class="modal-overlay" id="m-rechazar">
+  <div class="modal-box">
+    <div class="modal-icon" style="background:#FDECEA;"><svg width="28" height="28" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#C0392B" stroke-width="2"/><line x1="15" y1="9" x2="9" y2="15" stroke="#C0392B" stroke-width="2" stroke-linecap="round"/><line x1="9" y1="9" x2="15" y2="15" stroke="#C0392B" stroke-width="2" stroke-linecap="round"/></svg></div>
+    <div class="modal-title">¿Rechazar la alerta?</div>
+    <div class="modal-desc">Esta acción descartará la alerta. Se recomienda completar el campo de observación con el motivo del rechazo antes de continuar.</div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('m-rechazar')">Cancelar</button>
+      <button class="btn btn-danger" onclick="handleAlertAction('m-rechazar','Alerta rechazada. Registro guardado.')">Rechazar alerta</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Emitir -->
+<div class="modal-overlay" id="m-emit-confirm">
+  <div class="modal-box">
+    <div class="modal-icon" style="background:#FDECEA;"><svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" stroke="#C0392B" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg></div>
+    <div class="modal-title" id="emit-confirm-title">Emitir alerta a 28 contactos</div>
+    <div class="modal-desc" id="emit-confirm-desc">Esta acción enviará la <strong>Alerta Roja</strong> a todos los contactos seleccionados de Ribera Norte por WhatsApp y SMS. No se puede deshacer.</div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('m-emit-confirm')">Cancelar</button>
+      <button class="btn btn-danger btn-lg" onclick="emitManualAlert()">🚨 Emitir ahora</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Agregar Contacto (Custom Interactive Modal) -->
+<div class="modal-overlay" id="m-add-contacto">
+  <div class="modal-box">
+    <div class="modal-icon" style="background:#E9F7EF;"><svg width="28" height="28" viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19" stroke="#27AE60" stroke-width="2" stroke-linecap="round"/><line x1="5" y1="12" x2="19" y2="12" stroke="#27AE60" stroke-width="2" stroke-linecap="round"/></svg></div>
+    <div class="modal-title">Agregar Nuevo Contacto</div>
+    
+    <div style="display:flex; flex-direction:column; gap:12px;">
+      <div class="input-group" style="margin-bottom:8px;">
+        <label>Nombre Completo *</label>
+        <input type="text" id="new-c-nombre" placeholder="Ej: Carlos Gómez">
+      </div>
+      
+      <div class="input-group" style="margin-bottom:8px;">
+        <label>Tipo *</label>
+        <select id="new-c-tipo">
+          <option value="Vecino ribereño">Vecino ribereño</option>
+          <option value="Institución">Institución</option>
+          <option value="Autoridad">Autoridad</option>
+        </select>
+      </div>
+      
+      <div class="input-group" style="margin-bottom:8px;">
+        <label>Zona *</label>
+        <select id="new-c-zona">
+          <option value="Ribera Norte">Ribera Norte</option>
+          <option value="Bajo Uruguay">Bajo Uruguay</option>
+          <option value="Costa Sur">Costa Sur</option>
+          <option value="Zona Alta">Zona Alta</option>
+          <option value="Todo Panambí">Todo Panambí</option>
+        </select>
+      </div>
+      
+      <div class="input-group" style="margin-bottom:8px;">
+        <label>Teléfono (opcional)</label>
+        <input type="text" id="new-c-telefono" placeholder="Ej: +54 9 376 455-6677">
+      </div>
+      
+      <div class="input-group" style="margin-bottom:0;">
+        <label>Canal de Notificación</label>
+        <select id="new-c-canal">
+          <option value="📱 WhatsApp">📱 WhatsApp</option>
+          <option value="💬 SMS">💬 SMS</option>
+          <option value="📞 Llamada">📞 Llamada</option>
+        </select>
+      </div>
+    </div>
+    
+    <div class="modal-actions" style="margin-top:24px;">
+      <button class="btn btn-ghost" onclick="closeModal('m-add-contacto')">Cancelar</button>
+      <button class="btn btn-success btn-lg" onclick="saveNewContact()">Guardar Contacto</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="global-toast"></div>
+
+<!-- JavaScript modules entry point -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script type="module" src="js/app.js"></script>
+
+</body>
+</html>

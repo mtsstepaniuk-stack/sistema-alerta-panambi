@@ -1,0 +1,29 @@
+# Node / herramientas
+node_modules/
+npm-debug.log*
+
+# Variables locales y secretos
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Base SQLite generada en ejecución
+backend/database/*.sqlite
+backend/database/*.sqlite-shm
+backend/database/*.sqlite-wal
+
+# Adjuntos generados por usuarios
+uploads/incidencias/*
+!uploads/incidencias/.gitkeep
+
+# Sistema operativo / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

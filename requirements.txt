@@ -1,0 +1,2 @@
+# Este proyecto utiliza solamente la biblioteca estándar de Python.
+# El archivo se conserva para dejar explícito que no hay dependencias externas.

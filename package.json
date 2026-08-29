@@ -1,0 +1,9 @@
+{
+  "name": "sat-inundaciones-panambi",
+  "version": "1.0.0",
+  "description": "Sistema de Alerta Temprana de Inundaciones con backend local y SQLite.",
+  "scripts": {
+    "dev": "python backend/server.py",
+    "start": "python backend/server.py"
+  }
+}

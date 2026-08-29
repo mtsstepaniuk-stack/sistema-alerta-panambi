@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: sat-inundaciones-panambi-g11
+    runtime: python
+    plan: free
+    buildCommand: python -m compileall backend
+    startCommand: python backend/server.py
+    healthCheckPath: /api/health
