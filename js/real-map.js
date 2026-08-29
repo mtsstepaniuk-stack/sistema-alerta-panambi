@@ -1,6 +1,6 @@
 const LEAFLET_CSS = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css';
 const LEAFLET_JS = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js';
-const OSM_TILES = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+const OSM_TILES = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
 const FALLBACK_SENSORS = {
   'S-01': { lat: -27.7210, lng: -54.9158, zona: 'Ribera Norte' },
@@ -22,8 +22,11 @@ const FALLBACK_ZONES = [
 
 let leafletPromise = null;
 let mapInstance = null;
+let tileLayer = null;
 let renderInProgress = false;
 let rerenderTimer = null;
+let resizeObserver = null;
+let lastBounds = null;
 
 function riskColor(risk) {
   if (risk === 'Rojo') return '#c0392b';
@@ -53,15 +56,37 @@ function injectMapStyles() {
       height: 380px !important;
       min-height: 380px !important;
       overflow: hidden !important;
-      border-radius: 9px !important;
+      border-radius: 10px !important;
       background: #dbe8ef !important;
+      isolation: isolate;
     }
     #real-map .sat-leaflet-map {
-      width: 100%;
-      height: 100%;
-      min-height: 380px;
-      border-radius: 9px;
+      position: absolute !important;
+      inset: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      min-height: 0 !important;
+      border-radius: inherit;
       z-index: 1;
+    }
+    /* Evita que reglas globales para img deformen o recorten los mosaicos de Leaflet. */
+    #real-map .leaflet-container img.leaflet-tile {
+      max-width: none !important;
+      max-height: none !important;
+      width: 256px !important;
+      height: 256px !important;
+    }
+    #real-map .leaflet-tile-container,
+    #real-map .leaflet-pane,
+    #real-map .leaflet-map-pane,
+    #real-map .leaflet-tile-pane,
+    #real-map .leaflet-overlay-pane,
+    #real-map .leaflet-marker-pane,
+    #real-map .leaflet-tooltip-pane,
+    #real-map .leaflet-popup-pane {
+      position: absolute;
+      left: 0;
+      top: 0;
     }
     #real-map .sat-map-loading,
     #real-map .sat-map-error {
@@ -90,66 +115,120 @@ function injectMapStyles() {
     #real-map .sat-map-legend strong { display:block; margin-bottom:3px; font-size:11px; }
     #real-map .sat-map-legend span { display:flex; align-items:center; gap:6px; white-space:nowrap; }
     #real-map .sat-map-legend i { width:9px; height:9px; border-radius:50%; display:inline-block; }
-    #real-map .sat-fullscreen-control button {
+    #real-map .sat-expand-control button {
       width: 34px;
       height: 34px;
       border: 0;
       background: #fff;
       color: #263746;
-      font-size: 18px;
+      font-size: 19px;
       line-height: 34px;
       cursor: pointer;
       border-radius: 4px;
       box-shadow: 0 1px 5px rgba(0,0,0,.3);
+      font-family: Arial, sans-serif;
+      padding: 0;
     }
-    #real-map:fullscreen,
-    #real-map:-webkit-full-screen {
-      width: 100vw !important;
-      height: 100vh !important;
-      min-height: 100vh !important;
-      border-radius: 0 !important;
-      background: #dbe8ef !important;
+    #real-map .sat-expand-control button:hover { background: #f2f5f7; }
+    #sat-map-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 9998;
+      background: rgba(5, 16, 30, .58);
+      backdrop-filter: blur(7px);
+      -webkit-backdrop-filter: blur(7px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .18s ease;
     }
-    #real-map:fullscreen .sat-leaflet-map,
-    #real-map:-webkit-full-screen .sat-leaflet-map {
-      min-height: 100vh !important;
-      border-radius: 0 !important;
+    #sat-map-backdrop.visible {
+      opacity: 1;
+      pointer-events: auto;
     }
+    #real-map.sat-map-expanded {
+      position: fixed !important;
+      z-index: 9999 !important;
+      top: 5vh !important;
+      left: 5vw !important;
+      right: 5vw !important;
+      bottom: 5vh !important;
+      width: 90vw !important;
+      height: 90vh !important;
+      min-height: 0 !important;
+      border-radius: 16px !important;
+      box-shadow: 0 28px 80px rgba(0,0,0,.48);
+      border: 1px solid rgba(255,255,255,.22);
+    }
+    body.sat-map-overlay-active { overflow: hidden !important; }
     .sat-sensor-popup { min-width: 170px; }
     .sat-sensor-popup strong { display:block; font-size:14px; margin-bottom:4px; }
     .sat-sensor-popup div { margin:2px 0; }
+    @media (max-width: 700px) {
+      #real-map { height: 330px !important; min-height: 330px !important; }
+      #real-map.sat-map-expanded {
+        top: 12px !important;
+        left: 12px !important;
+        right: 12px !important;
+        bottom: 12px !important;
+        width: calc(100vw - 24px) !important;
+        height: calc(100vh - 24px) !important;
+      }
+    }
   `;
   document.head.appendChild(style);
 }
 
-function ensureLeaflet() {
-  if (window.L) return Promise.resolve(window.L);
-  if (leafletPromise) return leafletPromise;
-
-  leafletPromise = new Promise((resolve, reject) => {
-    if (!document.querySelector(`link[href="${LEAFLET_CSS}"]`)) {
-      const link = document.createElement('link');
+function ensureLeafletCss() {
+  return new Promise((resolve, reject) => {
+    let link = document.querySelector(`link[href="${LEAFLET_CSS}"]`);
+    if (link?.sheet) {
+      resolve();
+      return;
+    }
+    if (!link) {
+      link = document.createElement('link');
       link.rel = 'stylesheet';
       link.href = LEAFLET_CSS;
       document.head.appendChild(link);
     }
+    link.addEventListener('load', resolve, { once: true });
+    link.addEventListener('error', () => reject(new Error('No se pudo cargar el estilo del mapa.')), { once: true });
+  });
+}
 
-    const existing = document.querySelector(`script[src="${LEAFLET_JS}"]`);
-    if (existing) {
-      existing.addEventListener('load', () => resolve(window.L), { once: true });
-      existing.addEventListener('error', () => reject(new Error('No se pudo cargar Leaflet.')), { once: true });
+function ensureLeafletJs() {
+  if (window.L) return Promise.resolve(window.L);
+  return new Promise((resolve, reject) => {
+    let script = document.querySelector(`script[src="${LEAFLET_JS}"]`);
+    if (script) {
+      if (window.L) resolve(window.L);
+      else {
+        script.addEventListener('load', () => resolve(window.L), { once: true });
+        script.addEventListener('error', () => reject(new Error('No se pudo cargar Leaflet.')), { once: true });
+      }
       return;
     }
-
-    const script = document.createElement('script');
+    script = document.createElement('script');
     script.src = LEAFLET_JS;
-    script.defer = true;
+    script.async = true;
     script.onload = () => resolve(window.L);
     script.onerror = () => reject(new Error('No se pudo cargar Leaflet.'));
     document.head.appendChild(script);
   });
+}
 
+function ensureLeaflet() {
+  if (leafletPromise) return leafletPromise;
+  leafletPromise = Promise.all([ensureLeafletCss(), ensureLeafletJs()]).then(([, L]) => L || window.L);
   return leafletPromise;
+}
+
+async function waitForVisibleSize(host) {
+  for (let i = 0; i < 30; i += 1) {
+    const rect = host.getBoundingClientRect();
+    if (rect.width > 120 && rect.height > 120) return;
+    await new Promise(resolve => setTimeout(resolve, 60));
+  }
 }
 
 async function loadDashboardData() {
@@ -162,7 +241,6 @@ async function loadDashboardData() {
 function normalizedSensors(data) {
   const source = Array.isArray(data?.sensores) ? data.sensores : (Array.isArray(data?.sensors) ? data.sensors : []);
   const byCode = new Map(source.map(sensor => [String(sensor.sensor || sensor.id || ''), sensor]));
-
   return Object.entries(FALLBACK_SENSORS).map(([code, fallback]) => {
     const sensor = byCode.get(code) || {};
     return {
@@ -182,46 +260,105 @@ function normalizedZones(data) {
   const source = Array.isArray(data?.zonas) ? data.zonas
     : (Array.isArray(data?.zonas_mapa) ? data.zonas_mapa
       : (Array.isArray(data?.zonasRiesgo) ? data.zonasRiesgo : []));
-
   if (!source.length) return FALLBACK_ZONES;
-
   const fallbackByName = new Map(FALLBACK_ZONES.map(zone => [zone.nombre, zone]));
-  return source
-    .map(zone => {
-      const name = zone.nombre || zone.zona;
-      const fallback = fallbackByName.get(name);
-      return {
-        nombre: name || fallback?.nombre || 'Zona',
-        riesgo: zone.riesgo || zone.riesgo_base || fallback?.riesgo || 'Verde',
-        coords: zone.coords || zone.coordenadas || fallback?.coords || [],
-      };
-    })
-    .filter(zone => Array.isArray(zone.coords) && zone.coords.length >= 3);
+  return source.map(zone => {
+    const name = zone.nombre || zone.zona;
+    const fallback = fallbackByName.get(name);
+    return {
+      nombre: name || fallback?.nombre || 'Zona',
+      riesgo: zone.riesgo || zone.riesgo_base || fallback?.riesgo || 'Verde',
+      coords: zone.coords || zone.coordenadas || fallback?.coords || [],
+    };
+  }).filter(zone => Array.isArray(zone.coords) && zone.coords.length >= 3);
 }
 
-function addFullscreenControl(L, map, host) {
-  const FullscreenControl = L.Control.extend({
-    options: { position: 'topleft' },
+function getBackdrop() {
+  let backdrop = document.getElementById('sat-map-backdrop');
+  if (!backdrop) {
+    backdrop = document.createElement('div');
+    backdrop.id = 'sat-map-backdrop';
+    backdrop.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(backdrop);
+  }
+  return backdrop;
+}
+
+function refreshMapLayout(refit = false) {
+  if (!mapInstance) return;
+  const run = () => {
+    try {
+      mapInstance.invalidateSize({ animate: false, pan: false });
+      if (refit && lastBounds?.isValid?.()) mapInstance.fitBounds(lastBounds, { padding: [28, 28], maxZoom: 15 });
+      tileLayer?.redraw?.();
+    } catch (_) { /* el mapa puede haberse reemplazado durante un refresco */ }
+  };
+  requestAnimationFrame(run);
+  setTimeout(run, 120);
+  setTimeout(run, 420);
+}
+
+function closeExpandedMap() {
+  const host = document.getElementById('real-map');
+  if (!host?.classList.contains('sat-map-expanded')) return;
+  host.classList.remove('sat-map-expanded');
+  document.body.classList.remove('sat-map-overlay-active');
+  getBackdrop().classList.remove('visible');
+  refreshMapLayout(false);
+}
+
+function toggleExpandedMap() {
+  const host = document.getElementById('real-map');
+  if (!host) return;
+  const opening = !host.classList.contains('sat-map-expanded');
+  host.classList.toggle('sat-map-expanded', opening);
+  document.body.classList.toggle('sat-map-overlay-active', opening);
+  getBackdrop().classList.toggle('visible', opening);
+  refreshMapLayout(false);
+}
+
+function installOverlayEvents() {
+  const backdrop = getBackdrop();
+  if (backdrop.dataset.bound === '1') return;
+  backdrop.dataset.bound = '1';
+  backdrop.addEventListener('click', closeExpandedMap);
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') closeExpandedMap();
+  });
+}
+
+function addExpandControl(L, map) {
+  const ExpandControl = L.Control.extend({
+    options: { position: 'topright' },
     onAdd() {
-      const wrapper = L.DomUtil.create('div', 'sat-fullscreen-control leaflet-bar');
+      const wrapper = L.DomUtil.create('div', 'sat-expand-control leaflet-bar');
       const button = L.DomUtil.create('button', '', wrapper);
       button.type = 'button';
-      button.title = 'Ver mapa en pantalla completa';
-      button.setAttribute('aria-label', 'Ver mapa en pantalla completa');
-      button.textContent = '⛶';
+      button.title = 'Ampliar mapa';
+      button.setAttribute('aria-label', 'Ampliar mapa en una ventana');
+      button.textContent = '⤢';
       L.DomEvent.disableClickPropagation(wrapper);
-      L.DomEvent.on(button, 'click', () => {
-        if (!document.fullscreenElement) {
-          host.requestFullscreen?.();
-        } else {
-          document.exitFullscreen?.();
+      L.DomEvent.disableScrollPropagation(wrapper);
+      L.DomEvent.on(button, 'click', event => {
+        L.DomEvent.stop(event);
+        toggleExpandedMap();
+        button.textContent = document.getElementById('real-map')?.classList.contains('sat-map-expanded') ? '×' : '⤢';
+        button.title = button.textContent === '×' ? 'Cerrar mapa ampliado' : 'Ampliar mapa';
+      });
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') {
+          button.textContent = '⤢';
+          button.title = 'Ampliar mapa';
         }
-        setTimeout(() => map.invalidateSize(), 250);
+      });
+      getBackdrop().addEventListener('click', () => {
+        button.textContent = '⤢';
+        button.title = 'Ampliar mapa';
       });
       return wrapper;
     },
   });
-  map.addControl(new FullscreenControl());
+  map.addControl(new ExpandControl());
 }
 
 function addLegend(L, map) {
@@ -243,7 +380,10 @@ function addLegend(L, map) {
 async function renderInteractiveMap() {
   const host = document.getElementById('real-map');
   if (!host || renderInProgress) return;
-  if (host.querySelector('.leaflet-container')) return;
+  if (host.querySelector('.leaflet-container')) {
+    refreshMapLayout(false);
+    return;
+  }
 
   renderInProgress = true;
   host.dataset.interactiveMap = 'loading';
@@ -251,11 +391,16 @@ async function renderInteractiveMap() {
 
   try {
     const [L, data] = await Promise.all([ensureLeaflet(), loadDashboardData()]);
+    await waitForVisibleSize(host);
     const sensors = normalizedSensors(data);
     const zones = normalizedZones(data);
 
+    if (resizeObserver) {
+      try { resizeObserver.disconnect(); } catch (_) { /* noop */ }
+      resizeObserver = null;
+    }
     if (mapInstance) {
-      try { mapInstance.remove(); } catch (_) { /* mapa anterior ya reemplazado */ }
+      try { mapInstance.remove(); } catch (_) { /* noop */ }
       mapInstance = null;
     }
 
@@ -267,11 +412,19 @@ async function renderInteractiveMap() {
       doubleClickZoom: true,
       dragging: true,
       touchZoom: true,
+      boxZoom: true,
+      keyboard: true,
+      preferCanvas: false,
     });
     mapInstance = map;
 
-    L.tileLayer(OSM_TILES, {
+    tileLayer = L.tileLayer(OSM_TILES, {
+      minZoom: 3,
       maxZoom: 19,
+      tileSize: 256,
+      keepBuffer: 4,
+      updateWhenIdle: false,
+      crossOrigin: true,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors',
     }).addTo(map);
 
@@ -300,7 +453,6 @@ async function renderInteractiveMap() {
         fillColor: color,
         fillOpacity: 1,
       }).addTo(map);
-
       marker.bindTooltip(`${escapeHtml(sensor.sensor)} · ${escapeHtml(sensor.zona)}`, {
         direction: 'top',
         offset: [0, -7],
@@ -317,17 +469,21 @@ async function renderInteractiveMap() {
     });
 
     addLegend(L, map);
-    addFullscreenControl(L, map, host);
+    addExpandControl(L, map);
 
     if (boundsPoints.length) {
-      map.fitBounds(boundsPoints, { padding: [22, 22], maxZoom: 15 });
+      lastBounds = L.latLngBounds(boundsPoints);
+      map.fitBounds(lastBounds, { padding: [24, 24], maxZoom: 15 });
     } else {
+      lastBounds = null;
       map.setView([-27.726, -54.909], 14);
     }
 
     host.dataset.interactiveMap = 'ready';
-    requestAnimationFrame(() => map.invalidateSize());
-    setTimeout(() => map.invalidateSize(), 250);
+    resizeObserver = new ResizeObserver(() => refreshMapLayout(false));
+    resizeObserver.observe(host);
+    map.whenReady(() => refreshMapLayout(false));
+    refreshMapLayout(false);
   } catch (error) {
     console.error('[Mapa interactivo]', error);
     host.dataset.interactiveMap = 'error';
@@ -337,12 +493,13 @@ async function renderInteractiveMap() {
   }
 }
 
-function scheduleRender(delay = 60) {
+function scheduleRender(delay = 80) {
   clearTimeout(rerenderTimer);
   rerenderTimer = setTimeout(() => {
     const host = document.getElementById('real-map');
     if (!host) return;
     if (!host.querySelector('.leaflet-container')) renderInteractiveMap();
+    else refreshMapLayout(false);
   }, delay);
 }
 
@@ -356,8 +513,9 @@ function watchForStaticMapReplacements() {
       }
     }
   });
-
   observer.observe(document.body, { childList: true, subtree: true });
+  window.addEventListener('resize', () => refreshMapLayout(false));
+  installOverlayEvents();
   scheduleRender(0);
 }
 
