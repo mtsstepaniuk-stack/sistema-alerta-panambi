@@ -1,6 +1,8 @@
 /**
  * Cliente HTTP simple para consumir el backend local.
  */
+import './real-map.js';
+
 const API_BASE = '/api';
 
 export async function apiRequest(path, options = {}) {
