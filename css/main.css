@@ -41,3 +41,38 @@ body {
 .d-none {
   display: none !important;
 }
+
+/* ===== AJUSTES VISUALES ===== */
+/* Los códigos internos de requerimientos no forman parte de la interfaz final. */
+#threshold-config-card > div:first-child > .badge {
+  display: none !important;
+}
+
+/* En historial, las etiquetas de tipo usan fondos pastel claros incluso en modo oscuro. */
+#s-historial .hist-type-badge {
+  color: #24364a !important;
+  -webkit-text-fill-color: #24364a !important;
+}
+
+/* Los campos de fecha conservan fondo claro por comportamiento nativo del navegador. */
+body.dark-theme #s-historial .filter-bar input[type="date"] {
+  background: #f7f9fc !important;
+  color: #1f2d3d !important;
+  -webkit-text-fill-color: #1f2d3d !important;
+  color-scheme: light;
+}
+
+body.dark-theme #s-historial .filter-bar input[type="date"]::-webkit-datetime-edit,
+body.dark-theme #s-historial .filter-bar input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+body.dark-theme #s-historial .filter-bar input[type="date"]::-webkit-datetime-edit-text,
+body.dark-theme #s-historial .filter-bar input[type="date"]::-webkit-datetime-edit-month-field,
+body.dark-theme #s-historial .filter-bar input[type="date"]::-webkit-datetime-edit-day-field,
+body.dark-theme #s-historial .filter-bar input[type="date"]::-webkit-datetime-edit-year-field {
+  color: #1f2d3d !important;
+  -webkit-text-fill-color: #1f2d3d !important;
+}
+
+body.dark-theme #s-historial .filter-bar input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 0.8;
+  filter: none;
+}
