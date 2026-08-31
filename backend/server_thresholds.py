@@ -1,13 +1,15 @@
-"""Extensión incremental del backend estable para RF1 + RF2 + RF7 + RF18.
+"""Extensión incremental del backend estable para RF1 + RF2 + RF4 + RF7 + RF18.
 
 Mantiene intacto backend/server.py y agrega cambios acotados:
 - RF1: las nuevas lecturas simuladas se registran como máximo cada 15 minutos.
 - RF2/RF18: los umbrales de riesgo se guardan y configuran desde SQLite.
+- RF4: los destinatarios se seleccionan según zona y nivel de riesgo.
 - RF7: el tiempo estimado deja de ser fijo y se calcula con mediciones recientes.
 """
 
 from http.server import ThreadingHTTPServer
 from statistics import median
+from threading import local
 from urllib.parse import urlparse
 
 import server as base
@@ -20,6 +22,8 @@ DEFAULT_THRESHOLDS = {
 
 SENSOR_READING_INTERVAL_SECONDS = 15 * 60
 _stable_simulate_sensor_readings = base.simulate_sensor_readings
+_stable_destinatarios_para_zona = base.destinatarios_para_zona
+_notification_context = local()
 
 
 def ensure_thresholds_table():
@@ -92,11 +96,123 @@ def simulate_sensor_readings_15m(conn):
             if elapsed < SENSOR_READING_INTERVAL_SECONDS:
                 return
         except ValueError:
-            # Si hubiera una fecha antigua con formato inesperado, la función estable
-            # conserva su propio mecanismo de recuperación.
             pass
 
     return _stable_simulate_sensor_readings(conn)
+
+
+def _contact_name(contact):
+    return str(contact.get("nombre") or "").strip().lower()
+
+
+def _is_defensa_civil(contact):
+    name = _contact_name(contact)
+    return "defensa civil" in name or "protección ciudadana" in name
+
+
+def _is_municipalidad(contact):
+    name = _contact_name(contact)
+    return (
+        "intendente" in name
+        or "municipal" in name
+        or "acción social" in name
+        or "accion social" in name
+    )
+
+
+def _is_policia(contact):
+    return "polic" in _contact_name(contact)
+
+
+def _is_hospital(contact):
+    return "hospital" in _contact_name(contact)
+
+
+def _is_prefectura(contact):
+    return "prefectura" in _contact_name(contact)
+
+
+def _is_bomberos(contact):
+    return "bombero" in _contact_name(contact)
+
+
+def _unique_contacts(contacts):
+    seen = set()
+    result = []
+    for contact in contacts:
+        key = contact.get("id")
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append(contact)
+    return result
+
+
+def destinatarios_por_riesgo(conn, zona, riesgo=None):
+    """Selecciona contactos activos en función de zona y severidad.
+
+    Política operativa del prototipo:
+    - Amarillo / reporte vecinal validado: vecinos de la zona + Defensa Civil.
+    - Naranja: lo anterior + Municipalidad + Policía + Hospital.
+    - Rojo: lo anterior + Prefectura + Bomberos y demás instituciones/autoridades
+      activas aplicables a la zona.
+
+    Si no se informa riesgo se conserva el comportamiento estable anterior para
+    no alterar otros flujos que todavía no trabajan con severidad explícita.
+    """
+    if riesgo is None:
+        riesgo = getattr(_notification_context, "risk", None)
+    if not riesgo:
+        return _stable_destinatarios_para_zona(conn, zona)
+
+    normalized = base.normalize_risk(riesgo)
+    candidates = _stable_destinatarios_para_zona(conn, zona)
+    neighbors = [c for c in candidates if c.get("tipo") == "Vecino ribereño"]
+    institutions = [c for c in candidates if c.get("tipo") in ("Institución", "Autoridad")]
+
+    selected = []
+    if normalized in ("Amarillo", "Vecinal"):
+        selected.extend(neighbors)
+        selected.extend(c for c in institutions if _is_defensa_civil(c))
+    elif normalized == "Naranja":
+        selected.extend(neighbors)
+        selected.extend(
+            c for c in institutions
+            if _is_defensa_civil(c) or _is_municipalidad(c) or _is_policia(c) or _is_hospital(c)
+        )
+    elif normalized == "Rojo":
+        selected.extend(neighbors)
+        selected.extend(
+            c for c in institutions
+            if (
+                _is_defensa_civil(c)
+                or _is_municipalidad(c)
+                or _is_policia(c)
+                or _is_hospital(c)
+                or _is_prefectura(c)
+                or _is_bomberos(c)
+            )
+        )
+        # En nivel rojo se incluye cualquier institución/autoridad activa restante
+        # que ya sea aplicable a la zona según la lógica estable del sistema.
+        selected.extend(institutions)
+    else:
+        # Verde no constituye una alerta hidrológica; se mantiene únicamente
+        # coordinación institucional si se usa de forma manual.
+        selected.extend(c for c in institutions if _is_defensa_civil(c))
+
+    return _unique_contacts(selected)
+
+
+def notification_policy_text(riesgo):
+    normalized = base.normalize_risk(riesgo)
+    if normalized in ("Amarillo", "Vecinal"):
+        return "Vecinos de la zona y Defensa Civil"
+    if normalized == "Naranja":
+        return "Vecinos de la zona, Defensa Civil, Municipalidad, Policía y Hospital"
+    if normalized == "Rojo":
+        return "Vecinos de la zona y organismos de respuesta de Panambí"
+    return "Defensa Civil"
 
 
 def _parse_db_datetime(value):
@@ -122,7 +238,6 @@ def _sensor_recent_rate(rows):
             hours = (newest_dt - oldest_dt).total_seconds() / 3600.0
             if hours > 0:
                 rate = (float(newest["nivel_m"]) - float(oldest["nivel_m"])) / hours
-                # Descarta saltos absurdos para que un dato anómalo no domine la estimación.
                 if -2.0 <= rate <= 2.0:
                     return rate, "historial reciente"
 
@@ -228,7 +343,6 @@ def estimate_arrival_time():
         }
 
     eta_hours = max(0.0, (target - level) / combined_rate)
-    # Si el valor supera dos días deja de ser una estimación útil para este tablero.
     if eta_hours > 48:
         return {
             "horas": None,
@@ -260,11 +374,9 @@ def estimate_arrival_time():
 
 
 def init_db():
-    # Primero ejecuta exactamente la inicialización de la versión estable.
     base.init_db()
     ensure_thresholds_table()
 
-    # Corrige únicamente el texto histórico sembrado por versiones previas.
     with base.get_conn() as conn:
         conn.execute(
             """
@@ -274,13 +386,37 @@ def init_db():
             """
         )
 
-    # Desde este punto toda la lógica ya existente usa los valores configurados
-    # y respeta el intervalo de 15 minutos para nuevas lecturas simuladas.
     base.riesgo_desde_nivel = riesgo_desde_nivel_configurable
     base.simulate_sensor_readings = simulate_sensor_readings_15m
+    base.destinatarios_para_zona = destinatarios_por_riesgo
 
 
 class AppHandler(base.AppHandler):
+    def read_json(self):
+        data = super().read_json()
+        path = urlparse(self.path).path
+
+        if path == "/api/alertas/manuales":
+            _notification_context.risk = base.normalize_risk(data.get("riesgo"))
+        elif path == "/api/alertas/accion" and data.get("accion") == "Validada":
+            alert_id = data.get("alertaId")
+            try:
+                with base.get_conn() as conn:
+                    if alert_id:
+                        row = conn.execute(
+                            "SELECT riesgo FROM alertas WHERE id = ? AND estado = 'Pendiente'",
+                            (alert_id,),
+                        ).fetchone()
+                    else:
+                        row = conn.execute(
+                            "SELECT riesgo FROM alertas WHERE estado = 'Pendiente' ORDER BY creada_en ASC, id ASC LIMIT 1"
+                        ).fetchone()
+                _notification_context.risk = base.normalize_risk(row["riesgo"]) if row else None
+            except Exception:
+                _notification_context.risk = None
+
+        return data
+
     def do_GET(self):
         path = urlparse(self.path).path
         if path == "/api/umbrales":
@@ -293,7 +429,38 @@ class AppHandler(base.AppHandler):
                 return self.send_json({"ok": True, "estimacion": estimate_arrival_time()})
             except Exception as exc:
                 return self.send_json({"ok": False, "error": str(exc)}, 500)
+        if path == "/api/contactos/destinatarios":
+            try:
+                query = self.parse_query()
+                zona = query.get("zona", "Ribera Norte")
+                riesgo = query.get("riesgo")
+                if not riesgo:
+                    return super().do_GET()
+                with base.get_conn() as conn:
+                    contactos = destinatarios_por_riesgo(conn, zona, riesgo)
+                resumen = {
+                    "Vecino ribereño": sum(1 for c in contactos if c["tipo"] == "Vecino ribereño"),
+                    "Institución": sum(1 for c in contactos if c["tipo"] == "Institución"),
+                    "Autoridad": sum(1 for c in contactos if c["tipo"] == "Autoridad"),
+                }
+                return self.send_json(
+                    {
+                        "ok": True,
+                        "contactos": contactos,
+                        "resumen": resumen,
+                        "criterio": notification_policy_text(riesgo),
+                        "riesgo": base.normalize_risk(riesgo),
+                    }
+                )
+            except Exception as exc:
+                return self.send_json({"ok": False, "error": str(exc)}, 500)
         return super().do_GET()
+
+    def do_POST(self):
+        try:
+            return super().do_POST()
+        finally:
+            _notification_context.risk = None
 
     def do_PUT(self):
         path = urlparse(self.path).path
@@ -347,6 +514,7 @@ if __name__ == "__main__":
     print(f"SAT Inundaciones escuchando en 0.0.0.0:{base.PORT}")
     print("RF1: lecturas simuladas cada 15 minutos")
     print("RF2/RF18: umbrales configurables habilitados")
+    print("RF4: destinatarios diferenciados por zona y riesgo")
     print("RF7: estimación dinámica de llegada habilitada")
     try:
         httpd.serve_forever()
