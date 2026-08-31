@@ -3,6 +3,7 @@
  */
 import './real-map.js';
 import './sensor-map-fix.js';
+import './arrival-estimate.js';
 
 const API_BASE = '/api';
 
