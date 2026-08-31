@@ -7,6 +7,8 @@ import { apiRequest } from './api.js';
 import { currentUser, isAdmin } from './auth.js';
 import { showToast } from './modals.js';
 
+let roleObserver = null;
+
 function thresholdCard() {
   return `
     <div class="card" id="threshold-config-card" style="margin-bottom:16px;">
@@ -60,7 +62,7 @@ function formatUpdated(value) {
 }
 
 export async function renderThresholds() {
-  if (!ensureThresholdCard()) return;
+  if (!isAdmin() || !ensureThresholdCard()) return;
   try {
     const data = await apiRequest('/umbrales');
     const values = data.umbrales || {};
@@ -80,6 +82,11 @@ export async function renderThresholds() {
 }
 
 export async function saveThresholds() {
+  if (!isAdmin()) {
+    showToast('Se requiere usuario administrador para modificar umbrales.', true);
+    return;
+  }
+
   const amarillo = Number(document.getElementById('threshold-yellow')?.value);
   const naranja = Number(document.getElementById('threshold-orange')?.value);
   const rojo = Number(document.getElementById('threshold-red')?.value);
@@ -115,12 +122,21 @@ export async function saveThresholds() {
   }
 }
 
-export function initThresholds() {
-  // La pantalla de usuarios ya existe en el DOM aunque no esté visible.
-  // Solo se agrega la tarjeta cuando el usuario actual es administrador.
+function activateForCurrentRole() {
   if (!isAdmin()) return;
   ensureThresholdCard();
   renderThresholds();
+}
+
+export function initThresholds() {
+  activateForCurrentRole();
+
+  // Al cargar la página todavía no hay sesión. refreshUserMenu() agrega la clase
+  // admin-role después del login; observamos ese cambio para inicializar la tarjeta.
+  if (!roleObserver) {
+    roleObserver = new MutationObserver(() => activateForCurrentRole());
+    roleObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  }
 }
 
 window.renderThresholds = renderThresholds;
