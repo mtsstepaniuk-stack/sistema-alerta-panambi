@@ -8,6 +8,7 @@ import { currentUser, isAdmin } from './auth.js';
 import { showToast } from './modals.js';
 
 let roleObserver = null;
+let lastAdminRole = false;
 
 function thresholdCard() {
   return `
@@ -129,12 +130,19 @@ function activateForCurrentRole() {
 }
 
 export function initThresholds() {
+  lastAdminRole = document.body.classList.contains('admin-role');
   activateForCurrentRole();
 
-  // Al cargar la página todavía no hay sesión. refreshUserMenu() agrega la clase
-  // admin-role después del login; observamos ese cambio para inicializar la tarjeta.
+  // refreshUserMenu() agrega o quita la clase admin-role al iniciar/cerrar sesión.
+  // El cambio de tema también modifica las clases del body (dark-theme), por eso
+  // solo reaccionamos cuando cambia específicamente el estado de admin-role.
   if (!roleObserver) {
-    roleObserver = new MutationObserver(() => activateForCurrentRole());
+    roleObserver = new MutationObserver(() => {
+      const hasAdminRole = document.body.classList.contains('admin-role');
+      if (hasAdminRole === lastAdminRole) return;
+      lastAdminRole = hasAdminRole;
+      if (hasAdminRole) activateForCurrentRole();
+    });
     roleObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
   }
 }
