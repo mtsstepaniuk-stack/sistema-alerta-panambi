@@ -11,6 +11,7 @@ import { initDashboard } from './dashboard.js';
 import './navigation.js';
 import './incidents.js';
 import './users.js';
+import { initThresholds } from './thresholds.js';
 import { renderPendingAlert } from './alerts.js';
 import { refreshUserMenu } from './auth.js';
 
@@ -75,6 +76,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // 8. Initialize History listeners & initial render
   initHistoryFilters();
   renderHistory();
+
+  // 9. RF2/RF18: admin threshold configuration
+  initThresholds();
   
   console.log('SAT Inundaciones - Application ready.');
 });
