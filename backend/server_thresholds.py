@@ -1,8 +1,8 @@
-"""Extensión incremental del backend estable para RF2 + RF18.
+"""Extensión incremental del backend estable para RF1 + RF2 + RF18.
 
-Mantiene intacto backend/server.py y agrega umbrales configurables en SQLite.
-La simulación de sensores sigue siendo la existente; únicamente cambia la forma
-que clasifica cada nivel de agua.
+Mantiene intacto backend/server.py y agrega dos cambios acotados:
+- RF1: las nuevas lecturas simuladas se registran como máximo cada 15 minutos.
+- RF2/RF18: los umbrales de riesgo se guardan y configuran desde SQLite.
 """
 
 from http.server import ThreadingHTTPServer
@@ -15,6 +15,9 @@ DEFAULT_THRESHOLDS = {
     "naranja": 6.00,
     "rojo": 7.20,
 }
+
+SENSOR_READING_INTERVAL_SECONDS = 15 * 60
+_stable_simulate_sensor_readings = base.simulate_sensor_readings
 
 
 def ensure_thresholds_table():
@@ -75,12 +78,44 @@ def riesgo_desde_nivel_configurable(nivel):
     return "Verde", values["amarillo"]
 
 
+def simulate_sensor_readings_15m(conn):
+    """Conserva la simulación existente, pero limita nuevas tandas a 15 minutos."""
+    last = conn.execute("SELECT MAX(registrado_en) AS last_time FROM mediciones").fetchone()[0]
+    if last:
+        try:
+            elapsed = (
+                base.datetime.now()
+                - base.datetime.fromisoformat(str(last).replace(" ", "T"))
+            ).total_seconds()
+            if elapsed < SENSOR_READING_INTERVAL_SECONDS:
+                return
+        except ValueError:
+            # Si hubiera una fecha antigua con formato inesperado, la función estable
+            # conserva su propio mecanismo de recuperación.
+            pass
+
+    return _stable_simulate_sensor_readings(conn)
+
+
 def init_db():
     # Primero ejecuta exactamente la inicialización de la versión estable.
     base.init_db()
     ensure_thresholds_table()
-    # Desde este punto toda la lógica ya existente usa los valores configurados.
+
+    # Corrige únicamente el texto histórico sembrado por versiones previas.
+    with base.get_conn() as conn:
+        conn.execute(
+            """
+            UPDATE historial
+            SET detalle = REPLACE(detalle, 'Frecuencia 5 min', 'Frecuencia 15 min')
+            WHERE detalle LIKE '%Frecuencia 5 min%'
+            """
+        )
+
+    # Desde este punto toda la lógica ya existente usa los valores configurados
+    # y respeta el intervalo de 15 minutos para nuevas lecturas simuladas.
     base.riesgo_desde_nivel = riesgo_desde_nivel_configurable
+    base.simulate_sensor_readings = simulate_sensor_readings_15m
 
 
 class AppHandler(base.AppHandler):
@@ -143,6 +178,7 @@ if __name__ == "__main__":
     init_db()
     httpd = ThreadingHTTPServer(("", base.PORT), AppHandler)
     print(f"SAT Inundaciones escuchando en 0.0.0.0:{base.PORT}")
+    print("RF1: lecturas simuladas cada 15 minutos")
     print("RF2/RF18: umbrales configurables habilitados")
     try:
         httpd.serve_forever()
