@@ -1,16 +1,13 @@
 /*
- * Mapa cartográfico corregido para el prototipo.
+ * Mapa operativo del prototipo.
  *
- * Los sensores son SIMULADOS. Se ubican sobre el cauce del Río Uruguay y
- * aguas arriba de Panambí para representar la lógica de alerta temprana:
- * detectar una crecida antes de que llegue al área urbana.
+ * Los sensores son SIMULADOS y se ubican sobre el cauce del Río Uruguay,
+ * aguas arriba de Panambí, para representar detección anticipada.
  *
- * Referencias geográficas usadas para orientar el trazado:
- * - Panambí / Puerto Panambí: aprox. -27.72, -54.91
- * - sector del proyecto Panambí aguas arriba: aprox. -27.65, -54.90
- *
- * No se dibujan áreas de cobertura: un sensor se representa únicamente
- * mediante su marcador circular.
+ * Las zonas se muestran con marcadores separados dentro del área de Panambí.
+ * No representan cobertura de sensores ni límites oficiales de inundación:
+ * únicamente indican la ubicación aproximada de cada zona operativa y su
+ * estado calculado a partir de las mediciones simuladas.
  */
 
 const OSM_TILES_UPSTREAM = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
@@ -23,6 +20,27 @@ const UPSTREAM_SENSORS = [
   { id: 'S-05', lat: -27.7082, lng: -54.9092, punto: 'Monitoreo aguas arriba 5' },
   { id: 'S-06', lat: -27.7187, lng: -54.9105, punto: 'Ingreso a Panambí' },
 ];
+
+/*
+ * Puntos de referencia de las zonas del prototipo.
+ * Se ubican del lado argentino y separados de los sensores del río.
+ */
+const OPERATIONAL_ZONES = [
+  { nombre: 'Ribera Norte', lat: -27.7168, lng: -54.9158 },
+  { nombre: 'Bajo Uruguay', lat: -27.7219, lng: -54.9156 },
+  { nombre: 'Costa Sur', lat: -27.7282, lng: -54.9152 },
+  { nombre: 'Zona Alta', lat: -27.7225, lng: -54.9213 },
+  { nombre: 'Puente', lat: -27.7302, lng: -54.9134 },
+  { nombre: 'Arroyo', lat: -27.7257, lng: -54.9190 },
+];
+
+const RISK_PRIORITY = {
+  Verde: 0,
+  Vecinal: 1,
+  Amarillo: 2,
+  Naranja: 3,
+  Rojo: 4,
+};
 
 let upstreamInlineMap = null;
 let upstreamModalMap = null;
@@ -38,6 +56,14 @@ function sensorRiskColor(risk) {
   return '#27ae60';
 }
 
+function zoneStatus(risk) {
+  if (risk === 'Rojo') return 'Afectada — nivel crítico';
+  if (risk === 'Naranja') return 'Afectada';
+  if (risk === 'Amarillo') return 'Potencialmente afectada';
+  if (risk === 'Vecinal') return 'En revisión';
+  return 'Normal';
+}
+
 function esc(value) {
   return String(value ?? '')
     .replaceAll('&', '&amp;')
@@ -48,9 +74,11 @@ function esc(value) {
 }
 
 function injectUpstreamStyles() {
-  if (document.getElementById('sat-upstream-map-styles')) return;
+  if (document.getElementById('sat-upstream-map-styles-v2')) return;
+  document.getElementById('sat-upstream-map-styles')?.remove();
+
   const style = document.createElement('style');
-  style.id = 'sat-upstream-map-styles';
+  style.id = 'sat-upstream-map-styles-v2';
   style.textContent = `
     #real-map .sat-upstream-map {
       width: 100%;
@@ -75,13 +103,74 @@ function injectUpstreamStyles() {
       padding: 0;
       box-shadow: 0 1px 5px rgba(0,0,0,.28);
     }
-
     .sat-upstream-expand button:hover { background: #f3f6f8; }
 
-    .sat-upstream-popup { min-width: 190px; }
+    .sat-upstream-popup { min-width: 195px; }
     .sat-upstream-popup strong { display: block; margin-bottom: 5px; font-size: 14px; }
     .sat-upstream-popup div { margin: 2px 0; }
-    .sat-upstream-popup .sat-note { margin-top: 6px; color: #667; font-size: 10px; line-height: 1.35; }
+    .sat-upstream-popup .sat-note {
+      margin-top: 7px;
+      padding-top: 6px;
+      border-top: 1px solid #e5e9ed;
+      color: #667;
+      font-size: 10px;
+      line-height: 1.35;
+    }
+
+    .sat-zone-div-icon {
+      background: transparent !important;
+      border: 0 !important;
+    }
+    .sat-zone-pin {
+      width: 16px;
+      height: 16px;
+      border: 2px solid #fff;
+      border-radius: 3px;
+      transform: rotate(45deg);
+      box-shadow: 0 1px 5px rgba(0,0,0,.48);
+    }
+    .sat-zone-tooltip {
+      font-weight: 700;
+      font-size: 11px;
+    }
+
+    .sat-map-symbol-legend {
+      background: rgba(255,255,255,.96);
+      color: #243746;
+      border-radius: 7px;
+      padding: 8px 10px;
+      box-shadow: 0 1px 5px rgba(0,0,0,.28);
+      font-size: 10px;
+      line-height: 1.45;
+    }
+    .sat-map-symbol-legend strong {
+      display: block;
+      font-size: 11px;
+      margin-bottom: 4px;
+    }
+    .sat-map-symbol-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      white-space: nowrap;
+      margin: 2px 0;
+    }
+    .sat-legend-sensor {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #2e86c1;
+      border: 1px solid #fff;
+      box-shadow: 0 0 0 1px #789;
+    }
+    .sat-legend-zone {
+      width: 10px;
+      height: 10px;
+      background: #e67e22;
+      border: 1px solid #fff;
+      box-shadow: 0 0 0 1px #789;
+      transform: rotate(45deg);
+    }
 
     .sat-upstream-modal {
       position: fixed;
@@ -91,14 +180,13 @@ function injectUpstreamStyles() {
       align-items: center;
       justify-content: center;
       padding: 28px;
-      background: rgba(5, 18, 32, .72);
+      background: rgba(5,18,32,.72);
       backdrop-filter: blur(9px);
       -webkit-backdrop-filter: blur(9px);
     }
-
     .sat-upstream-dialog {
-      width: min(1180px, 95vw);
-      height: min(800px, 90vh);
+      width: min(1180px,95vw);
+      height: min(800px,90vh);
       min-height: 520px;
       display: flex;
       flex-direction: column;
@@ -108,7 +196,6 @@ function injectUpstreamStyles() {
       border: 1px solid rgba(255,255,255,.14);
       box-shadow: 0 28px 80px rgba(0,0,0,.55);
     }
-
     .sat-upstream-header {
       min-height: 58px;
       height: 58px;
@@ -120,10 +207,8 @@ function injectUpstreamStyles() {
       color: #fff;
       border-bottom: 1px solid rgba(255,255,255,.1);
     }
-
     .sat-upstream-title strong { display:block; font-size:14px; }
     .sat-upstream-title span { display:block; margin-top:2px; color:#9fb7cd; font-size:11px; }
-
     .sat-upstream-close {
       width: 38px;
       height: 38px;
@@ -134,44 +219,40 @@ function injectUpstreamStyles() {
       font-size: 25px;
       cursor: pointer;
     }
-
     .sat-upstream-close:hover { background: rgba(255,255,255,.14); }
-
     .sat-upstream-body {
       position: relative;
       flex: 1 1 auto;
       min-height: 0;
       background: #dbe8ef;
     }
-
     .sat-upstream-modal-map {
       width: 100%;
       height: 100%;
       background: #dbe8ef;
     }
-
     .sat-upstream-info {
       position: absolute;
       left: 14px;
       bottom: 14px;
       z-index: 800;
-      max-width: min(520px, 72%);
+      max-width: min(610px,76%);
       padding: 8px 10px;
       border-radius: 7px;
       background: rgba(16,34,56,.92);
       border: 1px solid rgba(255,255,255,.12);
       color: #dbe8f4;
       font-size: 10px;
-      line-height: 1.35;
+      line-height: 1.4;
       pointer-events: none;
     }
-
     body.sat-upstream-modal-open { overflow: hidden !important; }
 
     @media (max-width: 700px) {
       .sat-upstream-modal { padding: 10px; }
-      .sat-upstream-dialog { width: 100%; height: 92vh; min-height: 0; border-radius: 12px; }
-      .sat-upstream-info { max-width: 78%; }
+      .sat-upstream-dialog { width:100%; height:92vh; min-height:0; border-radius:12px; }
+      .sat-upstream-info { max-width:82%; }
+      .sat-map-symbol-legend { display:none; }
     }
   `;
   document.head.appendChild(style);
@@ -179,7 +260,7 @@ function injectUpstreamStyles() {
 
 async function waitForLeaflet() {
   for (let i = 0; i < 80; i += 1) {
-    if (window.L) return window.L;
+    if (window.L?.map) return window.L;
     await new Promise(resolve => setTimeout(resolve, 50));
   }
   throw new Error('Leaflet no terminó de cargar.');
@@ -197,6 +278,40 @@ function sensorDataById(data) {
   return new Map(source.map(item => [String(item.sensor || item.id || ''), item]));
 }
 
+function operationalZoneStates(data) {
+  const states = new Map(
+    OPERATIONAL_ZONES.map(zone => [zone.nombre, { ...zone, riesgo: 'Verde', sensor: '—', nivel_m: null }])
+  );
+
+  const sensors = Array.isArray(data?.sensores) ? data.sensores : [];
+  sensors.forEach(sensor => {
+    const zoneName = String(sensor.zona || '').trim();
+    if (!states.has(zoneName)) return;
+
+    const current = states.get(zoneName);
+    const risk = sensor.riesgo || 'Verde';
+    if ((RISK_PRIORITY[risk] ?? 0) >= (RISK_PRIORITY[current.riesgo] ?? 0)) {
+      current.riesgo = risk;
+      current.sensor = String(sensor.sensor || sensor.id || '—');
+      const level = Number(sensor.nivel_m ?? sensor.nivel);
+      current.nivel_m = Number.isFinite(level) ? level : null;
+    }
+  });
+
+  return Array.from(states.values());
+}
+
+function updateMapRiskBadge(zones) {
+  const badge = document.getElementById('map-risk-badge');
+  if (!badge) return;
+  const count = zones.filter(zone => zone.riesgo !== 'Verde').length;
+  badge.textContent = count === 0
+    ? 'SIN ZONAS EN RIESGO'
+    : `${count} ZONA${count === 1 ? '' : 'S'} EN RIESGO`;
+  badge.className = `badge ${count > 0 ? 'badge-rojo' : 'badge-verde'}`;
+  badge.title = 'Estado calculado a partir de las mediciones simuladas de los sensores.';
+}
+
 function addBaseLayer(L, map) {
   L.tileLayer(OSM_TILES_UPSTREAM, {
     maxZoom: 19,
@@ -204,8 +319,24 @@ function addBaseLayer(L, map) {
   }).addTo(map);
 }
 
-function addOnlySensors(L, map, data, expanded = false) {
+function addSymbolLegend(L, map) {
+  const legend = L.control({ position: 'bottomright' });
+  legend.onAdd = () => {
+    const div = L.DomUtil.create('div', 'sat-map-symbol-legend');
+    div.innerHTML = `
+      <strong>Referencias</strong>
+      <div class="sat-map-symbol-row"><i class="sat-legend-sensor"></i> Sensor sobre el río</div>
+      <div class="sat-map-symbol-row"><i class="sat-legend-zone"></i> Zona operativa</div>
+      <div style="margin-top:4px;color:#667;">Color = nivel de riesgo</div>
+    `;
+    return div;
+  };
+  legend.addTo(map);
+}
+
+function addMapContent(L, map, data, expanded = false) {
   const byId = sensorDataById(data);
+  const zones = operationalZoneStates(data);
   const bounds = [];
 
   UPSTREAM_SENSORS.forEach(point => {
@@ -234,12 +365,47 @@ function addOnlySensors(L, map, data, expanded = false) {
         <div><b>Nivel:</b> ${Number.isFinite(level) ? level.toFixed(2) : '—'} m</div>
         <div><b>Riesgo:</b> ${esc(risk)}</div>
         <div><b>Estado:</b> ${esc(state)}</div>
-        <div class="sat-note">Punto simulado ubicado sobre el Río Uruguay y aguas arriba de Panambí para representar detección anticipada.</div>
+        <div class="sat-note">Sensor simulado sobre el Río Uruguay. No representa una instalación real.</div>
       </div>
     `);
 
     bounds.push([point.lat, point.lng]);
   });
+
+  zones.forEach(zone => {
+    const color = sensorRiskColor(zone.riesgo);
+    const icon = L.divIcon({
+      className: 'sat-zone-div-icon',
+      html: `<div class="sat-zone-pin" style="background:${color}"></div>`,
+      iconSize: [18, 18],
+      iconAnchor: [9, 9],
+    });
+
+    const marker = L.marker([zone.lat, zone.lng], { icon, keyboard: true }).addTo(map);
+    const status = zoneStatus(zone.riesgo);
+
+    marker.bindTooltip(`${esc(zone.nombre)} · ${esc(status)}`, {
+      direction: 'top',
+      offset: [0, -8],
+      className: 'sat-zone-tooltip',
+    });
+
+    marker.bindPopup(`
+      <div class="sat-upstream-popup">
+        <strong>${esc(zone.nombre)}</strong>
+        <div><b>Estado:</b> ${esc(status)}</div>
+        <div><b>Riesgo:</b> ${esc(zone.riesgo)}</div>
+        <div><b>Sensor asociado:</b> ${esc(zone.sensor)}</div>
+        <div><b>Nivel registrado:</b> ${zone.nivel_m === null ? '—' : `${zone.nivel_m.toFixed(2)} m`}</div>
+        <div class="sat-note">El rombo marca una referencia aproximada de la zona. No delimita un polígono oficial ni un área exacta de inundación.</div>
+      </div>
+    `);
+
+    bounds.push([zone.lat, zone.lng]);
+  });
+
+  updateMapRiskBadge(zones);
+  addSymbolLegend(L, map);
 
   if (bounds.length) {
     map.fitBounds(bounds, {
@@ -275,17 +441,17 @@ async function openUpstreamModal(data = upstreamLastData) {
   overlay.id = 'sat-upstream-modal';
   overlay.className = 'sat-upstream-modal';
   overlay.innerHTML = `
-    <div class="sat-upstream-dialog" role="dialog" aria-modal="true" aria-label="Mapa ampliado de sensores aguas arriba">
+    <div class="sat-upstream-dialog" role="dialog" aria-modal="true" aria-label="Mapa ampliado de monitoreo y zonas de Panambí">
       <div class="sat-upstream-header">
         <div class="sat-upstream-title">
           <strong>Monitoreo del Río Uruguay — Panambí</strong>
-          <span>Sensores simulados ubicados aguas arriba para detección anticipada</span>
+          <span>Sensores simulados aguas arriba y zonas operativas según las mediciones</span>
         </div>
         <button type="button" class="sat-upstream-close" aria-label="Cerrar mapa">×</button>
       </div>
       <div class="sat-upstream-body">
         <div id="sat-upstream-modal-map" class="sat-upstream-modal-map"></div>
-        <div class="sat-upstream-info">Los marcadores representan puntos de monitoreo simulados. Su ubicación es referencial y se usa para mostrar la lógica de alerta temprana; no corresponde a sensores reales instalados.</div>
+        <div class="sat-upstream-info">Los círculos representan sensores simulados sobre el río. Los rombos representan puntos de referencia de las zonas de Panambí y cambian de color según el riesgo calculado. No se dibujan límites de inundación inventados.</div>
       </div>
     </div>
   `;
@@ -301,24 +467,29 @@ async function openUpstreamModal(data = upstreamLastData) {
   dialog?.addEventListener('mousedown', event => event.stopPropagation());
   document.addEventListener('keydown', upstreamEscapeHandler);
 
-  const L = await waitForLeaflet();
-  const mapNode = overlay.querySelector('#sat-upstream-modal-map');
+  try {
+    const L = await waitForLeaflet();
+    const mapNode = overlay.querySelector('#sat-upstream-modal-map');
+    const mapData = data || await loadSensorData();
 
-  requestAnimationFrame(() => {
-    upstreamModalMap = L.map(mapNode, {
-      zoomControl: true,
-      scrollWheelZoom: true,
-      doubleClickZoom: true,
-      dragging: true,
-      touchZoom: true,
-      preferCanvas: true,
+    requestAnimationFrame(() => {
+      upstreamModalMap = L.map(mapNode, {
+        zoomControl: true,
+        scrollWheelZoom: true,
+        doubleClickZoom: true,
+        dragging: true,
+        touchZoom: true,
+        preferCanvas: true,
+      });
+      addBaseLayer(L, upstreamModalMap);
+      addMapContent(L, upstreamModalMap, mapData, true);
+      upstreamModalMap.invalidateSize(true);
+      setTimeout(() => upstreamModalMap?.invalidateSize(true), 180);
+      setTimeout(() => upstreamModalMap?.invalidateSize(true), 500);
     });
-    addBaseLayer(L, upstreamModalMap);
-    addOnlySensors(L, upstreamModalMap, data || {}, true);
-    upstreamModalMap.invalidateSize(true);
-    setTimeout(() => upstreamModalMap?.invalidateSize(true), 180);
-    setTimeout(() => upstreamModalMap?.invalidateSize(true), 500);
-  });
+  } catch (error) {
+    console.error('[Mapa ampliado]', error);
+  }
 }
 
 function addExpandButton(L, map, data) {
@@ -345,10 +516,6 @@ function addExpandButton(L, map, data) {
 async function renderUpstreamMap() {
   const host = document.getElementById('real-map');
   if (!host) return;
-  if (host.querySelector('.sat-upstream-map') && upstreamInlineMap) {
-    upstreamInlineMap.invalidateSize(false);
-    return;
-  }
 
   try {
     const [L, data] = await Promise.all([waitForLeaflet(), loadSensorData()]);
@@ -359,9 +526,7 @@ async function renderUpstreamMap() {
       upstreamInlineMap = null;
     }
 
-    // Reemplazar el mapa anterior. Mantener la clase sat-leaflet-map impide que
-    // el módulo legado vuelva a insertar sus zonas de cobertura.
-    host.innerHTML = '<div class="sat-leaflet-map sat-upstream-map" aria-label="Mapa de sensores simulados aguas arriba sobre el Río Uruguay"></div>';
+    host.innerHTML = '<div class="sat-leaflet-map sat-upstream-map" aria-label="Mapa de sensores sobre el Río Uruguay y zonas operativas de Panambí"></div>';
     const node = host.querySelector('.sat-upstream-map');
 
     upstreamInlineMap = L.map(node, {
@@ -374,14 +539,14 @@ async function renderUpstreamMap() {
     });
 
     addBaseLayer(L, upstreamInlineMap);
-    addOnlySensors(L, upstreamInlineMap, data, false);
+    addMapContent(L, upstreamInlineMap, data, false);
     addExpandButton(L, upstreamInlineMap, data);
 
     requestAnimationFrame(() => upstreamInlineMap?.invalidateSize(true));
     setTimeout(() => upstreamInlineMap?.invalidateSize(true), 180);
     setTimeout(() => upstreamInlineMap?.invalidateSize(true), 500);
   } catch (error) {
-    console.error('[Mapa sensores aguas arriba]', error);
+    console.error('[Mapa operativo Panambí]', error);
   }
 }
 
@@ -394,7 +559,7 @@ function startUpstreamMap() {
   injectUpstreamStyles();
   scheduleUpstreamRender(250);
 
-  if (upstreamObserver) upstreamObserver.disconnect();
+  upstreamObserver?.disconnect();
   upstreamObserver = new MutationObserver(mutations => {
     for (const mutation of mutations) {
       const target = mutation.target;
@@ -409,6 +574,12 @@ function startUpstreamMap() {
   window.addEventListener('resize', () => {
     upstreamInlineMap?.invalidateSize(false);
     upstreamModalMap?.invalidateSize(false);
+  });
+
+  window.addEventListener('sat:navigate', () => {
+    if (document.getElementById('s-dash')?.classList.contains('active')) {
+      scheduleUpstreamRender(120);
+    }
   });
 }
 
