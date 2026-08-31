@@ -76,3 +76,94 @@ body.dark-theme #s-historial .filter-bar input[type="date"]::-webkit-calendar-pi
   opacity: 0.8;
   filter: none;
 }
+
+/* ===== PANEL PRINCIPAL: TARJETAS KPI ===== */
+/* Jerarquía visual: título arriba, valor principal destacado e indicador al pie. */
+#s-dash .kpi-card {
+  min-height: 154px;
+  padding: 19px 20px 17px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto 1fr auto;
+  grid-template-areas:
+    "title icon"
+    "value icon"
+    "delta delta";
+  column-gap: 14px;
+  row-gap: 0;
+  align-items: start;
+  border-radius: 14px;
+  box-shadow: 0 4px 14px rgba(15, 39, 68, 0.06);
+}
+
+body.dark-theme #s-dash .kpi-card {
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.16);
+}
+
+#s-dash .kpi-card .kpi-label {
+  grid-area: title;
+  margin: 2px 0 0;
+  padding: 0;
+  color: var(--texto-base);
+  font-size: 14px;
+  line-height: 1.25;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+#s-dash .kpi-card .kpi-icon-wrap {
+  grid-area: icon;
+  width: 39px;
+  height: 39px;
+  margin: 0;
+  border-radius: 10px;
+  align-self: start;
+  box-shadow: 0 2px 8px rgba(15, 39, 68, 0.08);
+}
+
+#s-dash .kpi-card .kpi-value {
+  grid-area: value;
+  align-self: end;
+  margin: 13px 0 10px;
+  padding: 0 !important;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 34px !important;
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  color: var(--texto-base);
+}
+
+/* La tendencia es una palabra y necesita una escala levemente menor que los números. */
+#s-dash .kpi-card:nth-child(2) .kpi-value {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 29px !important;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+}
+
+#s-dash .kpi-card .kpi-value span {
+  font-size: 14px !important;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: var(--texto-sub) !important;
+}
+
+#s-dash .kpi-card .kpi-delta {
+  grid-area: delta;
+  margin-top: 0;
+  padding-top: 11px;
+  border-top: 1px solid var(--gris-border);
+  font-size: 11.5px;
+  line-height: 1.3;
+  font-weight: 700;
+}
+
+body.dark-theme #s-dash .kpi-card .kpi-delta {
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+#s-dash .kpi-card .kpi-accent {
+  height: 3px;
+  border-radius: 14px 14px 0 0;
+}
