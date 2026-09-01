@@ -167,3 +167,134 @@ body.dark-theme #s-dash .kpi-card .kpi-delta {
   height: 3px;
   border-radius: 14px 14px 0 0;
 }
+
+/* ===== LOGIN: FONDO RÍO + IDENTIDAD INSTITUCIONAL ===== */
+#s-login {
+  background-color: #08223a !important;
+  background-image: url("https://commons.wikimedia.org/wiki/Special:Redirect/file/DJI_Mini_3_-_Puerto_Panambi_-_Misiones_%2810%29.jpg?width=1920") !important;
+  background-size: cover !important;
+  background-position: center center !important;
+  background-repeat: no-repeat !important;
+  position: relative;
+  padding: 34px 20px 175px;
+}
+
+/* Oscurece suavemente la foto y genera el degradado azul pedido desde abajo. */
+#s-login::before {
+  content: '' !important;
+  position: absolute !important;
+  inset: 0 !important;
+  background:
+    linear-gradient(180deg, rgba(3, 14, 26, .34) 0%, rgba(4, 21, 38, .28) 36%, rgba(5, 31, 54, .48) 62%, rgba(18, 75, 130, .88) 86%, rgba(21, 91, 157, .98) 100%) !important;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* La franja que antes tenía ondas ahora muestra los logos institucionales blancos. */
+#s-login .water-bg {
+  display: block !important;
+  position: absolute !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  height: 150px !important;
+  z-index: 1 !important;
+  background-image: url('../assets/unam-fi-white.svg') !important;
+  background-repeat: no-repeat !important;
+  background-position: center 54px !important;
+  background-size: min(620px, 82vw) auto !important;
+  overflow: visible !important;
+  pointer-events: none;
+}
+
+#s-login .water-bg .wave {
+  display: none !important;
+}
+
+/* Mantiene el cubículo en el mismo tono oscuro que ya tenía el login. */
+#s-login .login-box,
+body.dark-theme #s-login .login-box {
+  background: rgba(13, 33, 55, .91) !important;
+  border: 1px solid rgba(255, 255, 255, .13) !important;
+  box-shadow: 0 24px 65px rgba(0, 0, 0, .38) !important;
+  backdrop-filter: blur(14px) !important;
+  z-index: 2 !important;
+  padding-top: 30px !important;
+}
+
+/* Reemplaza el escudo y el título anterior por la nueva marca SAT Panambí. */
+#s-login .login-logo {
+  flex-direction: column !important;
+  gap: 9px !important;
+  margin-bottom: 18px !important;
+}
+
+#s-login .login-logo::before {
+  content: '';
+  display: block;
+  width: min(320px, 78vw);
+  height: 142px;
+  background: url('../assets/sat-panambi-logo.svg') center/contain no-repeat;
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, .17));
+}
+
+#s-login .login-logo-shield,
+#s-login .login-logo-text h1 {
+  display: none !important;
+}
+
+#s-login .login-logo-text p {
+  color: rgba(235, 244, 252, .88) !important;
+  font-size: 11px !important;
+  text-align: center;
+  font-weight: 600 !important;
+}
+
+#s-login .login-divider {
+  background: rgba(255, 255, 255, .14) !important;
+  margin: 18px 0 20px !important;
+}
+
+#s-login .input-group label {
+  color: rgba(236, 244, 252, .88) !important;
+}
+
+#s-login .input-group input {
+  background: rgba(7, 24, 41, .72) !important;
+  border-color: rgba(255, 255, 255, .14) !important;
+  color: #fff !important;
+}
+
+#s-login .input-group input::placeholder {
+  color: rgba(203, 219, 233, .48) !important;
+}
+
+#s-login .login-footer {
+  color: rgba(219, 232, 244, .77) !important;
+}
+
+#s-login .login-footer strong {
+  color: #ffffff !important;
+}
+
+@media (max-width: 640px) {
+  #s-login {
+    padding: 22px 14px 145px;
+    background-position: 42% center !important;
+  }
+
+  #s-login .login-box {
+    padding: 24px 22px 24px !important;
+  }
+
+  #s-login .login-logo::before {
+    width: min(285px, 82vw);
+    height: 128px;
+  }
+
+  #s-login .water-bg {
+    height: 128px !important;
+    background-position: center 48px !important;
+    background-size: min(500px, 92vw) auto !important;
+  }
+}
