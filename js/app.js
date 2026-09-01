@@ -15,7 +15,7 @@ import { initThresholds } from './thresholds.js';
 import { renderPendingAlert } from './alerts.js';
 import './manual-alert-rf8.js';
 import './final-rfs.js';
-import './rf14-pending-fix.js';
+import './rf14-pending-fix.js?v=20260901-3';
 import { refreshUserMenu } from './auth.js';
 
 // Ajustes visuales puntuales del login.
