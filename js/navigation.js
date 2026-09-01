@@ -58,6 +58,10 @@ export function navigate(id) {
     setTimeout(() => window.renderUsers?.(), 0);
   }
 
+  if (id === 's-historial') {
+    setTimeout(() => window.renderHistory?.(), 80);
+  }
+
   window.scrollTo({ top: 0, behavior: 'instant' });
 
   document.querySelectorAll('.sidebar .nav-item').forEach(item => {
