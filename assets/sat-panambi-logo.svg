@@ -1,1 +1,31 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 360" role="img" aria-labelledby="title desc"><title id="title">SAT Panambí</title><desc id="desc">Sistema de Alerta Temprana de Panambí</desc><defs><linearGradient id="teal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#32c7bf"/><stop offset="1" stop-color="#22a9b2"/></linearGradient><linearGradient id="blue" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2496df"/><stop offset="1" stop-color="#0d69bb"/></linearGradient></defs><rect x="1" y="1" width="818" height="358" rx="28" fill="#fff"/><g transform="translate(270 18)"><path d="M66 20C30 4 3 9 12 67c7 44 31 58 58 69-19 17-27 37-20 72 26-11 50-26 61-49 18-38 1-100-45-139z" fill="url(#teal)"/><path d="M208 20c36-16 63-11 54 47-7 44-31 58-58 69 19 17 27 37 20 72-26-11-50-26-61-49-18-38-1-100 45-139z" fill="url(#teal)"/><circle cx="137" cy="44" r="13" fill="#064b86"/><rect x="130" y="61" width="14" height="48" rx="7" fill="#064b86"/><circle cx="137" cy="153" r="14" fill="#ff633d"/><path d="M61 178c42 35 91 40 151 7-9 22-20 39-45 49-38 16-78 10-106-19l-16-23z" fill="url(#blue)"/><path d="M74 226c37 27 78 31 122 6-13 31-33 53-59 76-24-22-48-50-63-82z" fill="url(#blue)"/></g><text x="410" y="305" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="68" font-weight="800" letter-spacing="2" fill="#07518d">SAT PANAMBÍ</text><line x1="205" y1="326" x2="365" y2="326" stroke="#1db8b6" stroke-width="4" stroke-linecap="round"/><circle cx="410" cy="326" r="6" fill="#1db8b6"/><line x1="455" y1="326" x2="615" y2="326" stroke="#1db8b6" stroke-width="4" stroke-linecap="round"/><text x="410" y="348" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" letter-spacing="4" fill="#555">Municipalidad de Panambí</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 330" role="img" aria-labelledby="title desc">
+  <title id="title">SAT Panambí</title>
+  <desc id="desc">Identidad visual del Sistema de Alerta Temprana de Panambí</desc>
+  <defs>
+    <linearGradient id="teal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2bc6bd"/>
+      <stop offset="1" stop-color="#20aeb1"/>
+    </linearGradient>
+    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2999e5"/>
+      <stop offset="1" stop-color="#1474c8"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Símbolo central inspirado en la marca provista -->
+  <g transform="translate(292 8)">
+    <path d="M54 8C16-7-7 6 1 49c6 36 23 50 49 61-17 15-23 34-15 61 26-10 48-27 57-50 15-39-3-87-38-113z" fill="url(#teal)"/>
+    <path d="M142 8c38-15 61-2 53 41-6 36-23 50-49 61 17 15 23 34 15 61-26-10-48-27-57-50-15-39 3-87 38-113z" fill="url(#teal)"/>
+    <circle cx="98" cy="38" r="11" fill="#ffffff"/>
+    <rect x="92" y="54" width="12" height="40" rx="6" fill="#ffffff"/>
+    <circle cx="98" cy="137" r="13" fill="#ff5c38"/>
+    <path d="M40 158c36 25 77 30 118 6-5 20-18 35-38 43-31 12-64 7-88-15l-12-18z" fill="url(#blue)"/>
+    <path d="M53 201c31 20 65 24 100 5-10 25-28 45-55 67-20-19-38-43-50-65z" fill="url(#blue)"/>
+  </g>
+
+  <text x="380" y="252" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="54" font-weight="800" letter-spacing="1.5" fill="#ffffff">SAT PANAMBÍ</text>
+  <line x1="205" y1="276" x2="350" y2="276" stroke="#22b8b5" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="380" cy="276" r="5.5" fill="#22b8b5"/>
+  <line x1="410" y1="276" x2="555" y2="276" stroke="#22b8b5" stroke-width="4" stroke-linecap="round"/>
+  <text x="380" y="312" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="23" letter-spacing="2.5" fill="#f0f3f7">Municipalidad de Panambí</text>
+</svg>
