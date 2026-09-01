@@ -13,6 +13,7 @@ import './incidents.js';
 import './users.js';
 import { initThresholds } from './thresholds.js';
 import { renderPendingAlert } from './alerts.js';
+import './manual-alert-rf8.js';
 import { refreshUserMenu } from './auth.js';
 
 // Setup Dark Mode theme switcher
@@ -77,7 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initHistoryFilters();
   renderHistory();
 
-  // 9. RF2/RF18: admin threshold configuration
+  // 9. Admin threshold configuration
   initThresholds();
   
   console.log('SAT Inundaciones - Application ready.');
