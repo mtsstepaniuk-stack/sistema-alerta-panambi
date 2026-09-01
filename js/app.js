@@ -173,8 +173,9 @@ document.addEventListener('DOMContentLoaded', () => {
   initContactsListeners();
   renderContacts();
 
-  // 7. Initialize pending alert view
-  renderPendingAlert();
+  // 7. Alertas pendientes se cargan recién al entrar a la pantalla de validación.
+  // Evita mostrar un falso "Sesión inválida o vencida" mientras el usuario
+  // todavía está en el login o existe un token viejo después de un redeploy.
 
   // 8. Initialize History listeners & initial render
   initHistoryFilters();
