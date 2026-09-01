@@ -7,26 +7,78 @@ import { currentUser } from './auth.js';
 
 function ensurePanel() {
   const content = document.querySelector('#s-historial .content');
-  if (!content || document.getElementById('rnf1-status-panel')) return;
+  if (!content) return;
 
-  const panel = document.createElement('div');
-  panel.id = 'rnf1-status-panel';
-  panel.className = 'card';
-  panel.style.cssText = 'margin-bottom:16px;padding:16px 18px;';
-  panel.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-      <div>
-        <div class="card-title">Tiempo de generación de alertas</div>
-        <div style="font-size:11px;color:var(--texto-sub);margin-top:3px;">Control operativo: máximo permitido 5 minutos desde la detección hasta la generación.</div>
+  const summaryGrid = [...content.querySelectorAll('div')].find(el =>
+    el.style?.display === 'grid' &&
+    el.querySelector(':scope > .card') &&
+    [...el.querySelectorAll(':scope > .card .card-title')].some(title => title.textContent.trim() === 'Mediciones')
+  );
+
+  if (!summaryGrid) return;
+
+  // RNF1 + los cuatro resúmenes deben entrar en el mismo renglón en escritorio.
+  summaryGrid.classList.add('history-summary-with-rnf1');
+  summaryGrid.style.gridTemplateColumns = 'minmax(330px,1.25fr) repeat(4,minmax(0,1fr))';
+  summaryGrid.style.alignItems = 'stretch';
+
+  if (!document.getElementById('rnf1-history-layout-styles')) {
+    const style = document.createElement('style');
+    style.id = 'rnf1-history-layout-styles';
+    style.textContent = `
+      #s-historial .history-summary-with-rnf1 > .card {
+        min-width: 0;
+      }
+      #s-historial .history-summary-with-rnf1 > .card:not(#rnf1-status-panel) {
+        padding: 12px 12px !important;
+      }
+      #s-historial .history-summary-with-rnf1 > .card:not(#rnf1-status-panel) .card-title {
+        font-size: 11px;
+        white-space: nowrap;
+      }
+      #s-historial #rnf1-status-panel {
+        margin-bottom: 0 !important;
+        padding: 14px 18px !important;
+      }
+      @media (max-width: 1250px) {
+        #s-historial .history-summary-with-rnf1 {
+          grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+        }
+        #s-historial #rnf1-status-panel {
+          grid-column: 1 / -1;
+        }
+      }
+      @media (max-width: 700px) {
+        #s-historial .history-summary-with-rnf1 {
+          grid-template-columns: 1fr !important;
+        }
+        #s-historial #rnf1-status-panel {
+          grid-column: auto;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  let panel = document.getElementById('rnf1-status-panel');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'rnf1-status-panel';
+    panel.className = 'card';
+    panel.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+        <div>
+          <div class="card-title">Tiempo de generación de alertas</div>
+          <div style="font-size:11px;color:var(--texto-sub);margin-top:3px;">Control operativo: máximo permitido 5 minutos desde la detección hasta la generación.</div>
+        </div>
+        <button type="button" class="btn btn-outline btn-sm" onclick="renderRNF1Status()">Actualizar</button>
       </div>
-      <button type="button" class="btn btn-outline btn-sm" onclick="renderRNF1Status()">Actualizar</button>
-    </div>
-    <div id="rnf1-status-content" style="margin-top:14px;font-size:13px;color:var(--texto-sub);">Iniciá sesión para consultar el estado.</div>
-  `;
-
-  const firstCard = content.querySelector('.card');
-  if (firstCard) firstCard.before(panel);
-  else content.prepend(panel);
+      <div id="rnf1-status-content" style="margin-top:14px;font-size:13px;color:var(--texto-sub);">Iniciá sesión para consultar el estado.</div>
+    `;
+    summaryGrid.prepend(panel);
+  } else if (panel.parentElement !== summaryGrid) {
+    summaryGrid.prepend(panel);
+  }
 }
 
 function esc(value = '') {
@@ -53,7 +105,7 @@ export async function renderRNF1Status() {
     const cumplen = Number(r.cumplen || 0);
 
     host.innerHTML = `
-      <div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap;">
+      <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
         <span class="badge ${ok ? 'badge-verde' : 'badge-rojo'}">${ok ? 'CUMPLE' : 'NO CUMPLE'}</span>
         <strong style="color:var(--texto-base);font-size:18px;">${max.toFixed(3)} s</strong>
         <span>latencia máxima registrada</span>
