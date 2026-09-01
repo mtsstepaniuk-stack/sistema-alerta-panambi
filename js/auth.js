@@ -33,13 +33,14 @@ function prepareLoginInputs() {
     passInput.removeAttribute('value');
     passInput.defaultValue = '';
     passInput.value = '';
-    // Evita que el navegador trate la contraseña de demostración como una credencial precargada.
     passInput.setAttribute('autocomplete', 'new-password');
   }
 }
 
 export function currentUser() {
   try {
+    const token = localStorage.getItem('sat-token');
+    if (!token) return null;
     return JSON.parse(localStorage.getItem('sat-user') || 'null');
   } catch {
     return null;
@@ -94,7 +95,9 @@ export async function login() {
       method: 'POST',
       body: JSON.stringify({ usuario, password })
     });
+
     localStorage.setItem('sat-user', JSON.stringify(data.user));
+    localStorage.setItem('sat-token', data.token);
     document.body.classList.remove('public-report-mode');
     refreshUserMenu();
     window.navigate('s-dash');
@@ -106,6 +109,7 @@ export async function login() {
 
 export function logout() {
   localStorage.removeItem('sat-user');
+  localStorage.removeItem('sat-token');
   document.body.classList.remove('public-report-mode', 'admin-role');
   refreshUserMenu();
   window.navigate('s-login');
@@ -123,5 +127,4 @@ if (document.readyState === 'loading') {
   prepareLoginInputs();
 }
 
-// También limpia los campos al volver a la pestaña/página desde la caché del navegador.
 window.addEventListener('pageshow', prepareLoginInputs);
