@@ -2,6 +2,9 @@
  * RF8 — Completa el flujo existente de alerta manual sin reemplazarlo.
  * Agrega fuente de la alerta, valida canales y adjunta esos datos al POST
  * que ya realiza alerts.js.
+ *
+ * Los canales seleccionados en el Paso 1 también filtran los destinatarios
+ * del Paso 2 según el canal REAL registrado para cada contacto.
  */
 
 function selectedChannels() {
@@ -12,19 +15,6 @@ function selectedChannels() {
       .replace(/\s+/g, ' ')
       .trim())
     .filter(Boolean);
-}
-
-function selectedChannelsDisplay() {
-  const iconByChannel = {
-    WhatsApp: '📱',
-    SMS: '💬',
-    Llamada: '📞',
-    Altoparlante: '📢',
-  };
-
-  const channels = selectedChannels();
-  if (!channels.length) return 'Sin canal seleccionado';
-  return channels.map(channel => `${iconByChannel[channel] || ''} ${channel}`.trim()).join(' · ');
 }
 
 function sourceValue() {
@@ -73,52 +63,6 @@ function updateSourceSummary() {
   if (output) output.textContent = value;
 }
 
-/*
- * El campo "Canal" de cada contacto originalmente mostraba su canal registrado
- * (por ejemplo WhatsApp o Llamada), aunque el operador hubiera elegido solo SMS
- * para la alerta actual. Eso resultaba confuso. Para RF8 el paso 2 debe reflejar
- * los canales elegidos para ESTA alerta, que son los que finalmente se registran
- * y simulan en el envío.
- */
-function syncRecipientChannels() {
-  const table = document.querySelector('#emit-step-2 table');
-  const tbody = document.getElementById('emit-dest-tbody');
-  if (!table || !tbody) return;
-
-  const channelHeader = table.querySelector('thead th:nth-child(4)');
-  if (channelHeader && channelHeader.textContent !== 'Canal de esta alerta') {
-    channelHeader.textContent = 'Canal de esta alerta';
-  }
-
-  const display = selectedChannelsDisplay();
-  tbody.querySelectorAll('tr[data-tipo]').forEach(row => {
-    const cell = row.querySelector('td:nth-child(4)');
-    if (cell && cell.textContent.trim() !== display) {
-      cell.textContent = display;
-    }
-  });
-}
-
-function installRecipientChannelSync() {
-  const tbody = document.getElementById('emit-dest-tbody');
-  if (!tbody || tbody.__rf8ChannelObserver) return;
-
-  const observer = new MutationObserver(() => syncRecipientChannels());
-  observer.observe(tbody, { childList: true, subtree: true });
-  tbody.__rf8ChannelObserver = observer;
-
-  document.querySelectorAll('#emit-step-1 input[type="checkbox"]').forEach(checkbox => {
-    checkbox.addEventListener('change', () => {
-      syncRecipientChannels();
-      // Si el operador vuelve al paso 1, cambia canales y regresa al paso 2,
-      // la tabla ya queda sincronizada antes incluso de que vuelva a mostrarse.
-      setTimeout(syncRecipientChannels, 0);
-    });
-  });
-
-  syncRecipientChannels();
-}
-
 function showLocalError(message) {
   const toast = document.getElementById('global-toast');
   if (!toast) {
@@ -150,6 +94,21 @@ function installEmitValidation() {
   window.emitManualAlert = wrapped;
 }
 
+function installStepValidation() {
+  const original = window.emitStep;
+  if (typeof original !== 'function' || original.__rf8ChannelWrapped) return;
+
+  const wrapped = function rf8EmitStep(step) {
+    if (Number(step) === 2 && selectedChannels().length === 0) {
+      showLocalError('Seleccione al menos un canal de envío antes de continuar.');
+      return;
+    }
+    return original(step);
+  };
+  wrapped.__rf8ChannelWrapped = true;
+  window.emitStep = wrapped;
+}
+
 function installResetHook() {
   const original = window.resetEmitForm;
   if (typeof original !== 'function' || original.__rf8Wrapped) return;
@@ -159,11 +118,17 @@ function installResetHook() {
     const source = document.getElementById('emit-fuente');
     if (source) source.selectedIndex = 0;
     updateSourceSummary();
-    setTimeout(syncRecipientChannels, 0);
     return result;
   };
   wrapped.__rf8Wrapped = true;
   window.resetEmitForm = wrapped;
+}
+
+function enrichRecipientUrl(url) {
+  const channels = selectedChannels();
+  const parsed = new URL(url, window.location.origin);
+  parsed.searchParams.set('canales', channels.join(','));
+  return `${parsed.pathname}${parsed.search}`;
 }
 
 function installFetchEnrichment() {
@@ -174,6 +139,15 @@ function installFetchEnrichment() {
   window.fetch = (input, init = {}) => {
     const url = typeof input === 'string' ? input : (input?.url || '');
     const method = String(init?.method || 'GET').toUpperCase();
+
+    if (method === 'GET' && url.includes('/api/contactos/destinatarios')) {
+      const enrichedUrl = enrichRecipientUrl(url);
+      if (typeof input === 'string') {
+        input = enrichedUrl;
+      } else if (input instanceof Request) {
+        input = new Request(enrichedUrl, input);
+      }
+    }
 
     if (method === 'POST' && url.includes('/api/alertas/manuales') && typeof init.body === 'string') {
       try {
@@ -194,23 +168,12 @@ function initRf8() {
   ensureSourceField();
   ensureSourceSummary();
   updateSourceSummary();
-  installRecipientChannelSync();
   installEmitValidation();
+  installStepValidation();
   installResetHook();
   installFetchEnrichment();
 
   document.getElementById('emit-fuente')?.addEventListener('change', updateSourceSummary);
-
-  const step2 = document.getElementById('emit-step-2');
-  if (step2) {
-    const observer = new MutationObserver(() => {
-      if (step2.style.display !== 'none') {
-        setTimeout(syncRecipientChannels, 0);
-        setTimeout(syncRecipientChannels, 80);
-      }
-    });
-    observer.observe(step2, { attributes: true, attributeFilter: ['style'] });
-  }
 
   const step3 = document.getElementById('emit-step-3');
   if (step3) {
