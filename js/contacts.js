@@ -9,6 +9,115 @@ import { apiRequest, buildQuery } from './api.js';
 let contacts = [];
 let stats = { total: 0, activos: 0, instituciones: 0, incompletos: 0 };
 
+const CONTACT_TYPES = ['Vecino ribereño', 'Institución', 'Autoridad'];
+const CONTACT_ZONES = [
+  'Ribera Norte',
+  'Bajo Uruguay',
+  'Costa Sur',
+  'Zona Alta',
+  'Puente',
+  'Arroyo',
+  'Todo Panambí',
+  'Municipal',
+];
+const CONTACT_CHANNELS = ['📱 WhatsApp', '💬 SMS', '📞 Llamada'];
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
+function ensureSelectOptions(select, values, leadingValue = null) {
+  if (!select) return;
+  const existing = new Set(Array.from(select.options).map(option => option.value || option.textContent));
+
+  values.forEach(value => {
+    if (existing.has(value)) return;
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = value;
+    select.appendChild(option);
+  });
+
+  if (leadingValue && !Array.from(select.options).some(option => option.value === leadingValue)) {
+    const option = document.createElement('option');
+    option.value = leadingValue;
+    option.textContent = leadingValue;
+    select.prepend(option);
+  }
+}
+
+function ensureContactOptions() {
+  ensureSelectOptions(document.getElementById('contact-filter-zona'), CONTACT_ZONES);
+  ensureSelectOptions(document.getElementById('new-c-zona'), CONTACT_ZONES);
+  ensureSelectOptions(document.getElementById('new-c-tipo'), CONTACT_TYPES);
+  ensureSelectOptions(document.getElementById('new-c-canal'), CONTACT_CHANNELS);
+}
+
+function ensureEditModal() {
+  if (document.getElementById('m-edit-contacto')) return;
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.id = 'm-edit-contacto';
+  modal.innerHTML = `
+    <div class="modal-box">
+      <div class="modal-icon" style="background:#EAF2FB;">✏️</div>
+      <div class="modal-title">Editar Contacto</div>
+      <input type="hidden" id="edit-c-id">
+
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div class="input-group" style="margin-bottom:8px;">
+          <label>Nombre Completo *</label>
+          <input type="text" id="edit-c-nombre" placeholder="Nombre del contacto">
+        </div>
+
+        <div class="input-group" style="margin-bottom:8px;">
+          <label>Tipo *</label>
+          <select id="edit-c-tipo">
+            ${CONTACT_TYPES.map(type => `<option value="${escapeHtml(type)}">${escapeHtml(type)}</option>`).join('')}
+          </select>
+        </div>
+
+        <div class="input-group" style="margin-bottom:8px;">
+          <label>Zona *</label>
+          <select id="edit-c-zona">
+            ${CONTACT_ZONES.map(zone => `<option value="${escapeHtml(zone)}">${escapeHtml(zone)}</option>`).join('')}
+          </select>
+        </div>
+
+        <div class="input-group" style="margin-bottom:8px;">
+          <label>Teléfono (opcional)</label>
+          <input type="text" id="edit-c-telefono" placeholder="Ej: +54 9 376 455-6677">
+          <small style="color:var(--texto-sub);font-size:11px;">Si queda vacío, el contacto se marcará como incompleto.</small>
+        </div>
+
+        <div class="input-group" style="margin-bottom:0;">
+          <label>Canal de Notificación</label>
+          <select id="edit-c-canal">
+            ${CONTACT_CHANNELS.map(channel => `<option value="${escapeHtml(channel)}">${escapeHtml(channel)}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+
+      <div class="modal-actions" style="margin-top:24px;">
+        <button class="btn btn-ghost" type="button" onclick="closeModal('m-edit-contacto')">Cancelar</button>
+        <button class="btn btn-primary btn-lg" type="button" onclick="saveEditedContact()">Guardar Cambios</button>
+      </div>
+    </div>
+  `;
+
+  modal.addEventListener('click', event => {
+    if (event.target === modal) closeModal('m-edit-contacto');
+  });
+
+  document.body.appendChild(modal);
+}
+
 async function loadContacts() {
   const search = document.getElementById('contact-search')?.value || '';
   const tipo = document.getElementById('contact-filter-tipo')?.value || 'Todos los tipos';
@@ -29,7 +138,7 @@ export async function renderContacts() {
   try {
     await loadContacts();
   } catch (error) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--rojo)">${error.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--rojo)">${escapeHtml(error.message)}</td></tr>`;
     return;
   }
 
@@ -46,16 +155,16 @@ export async function renderContacts() {
 
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td><strong>${c.nombre}</strong></td>
-        <td><span class="badge ${typeBadgeClass}">${typeLabel}</span></td>
-        <td>${c.zona}</td>
-        <td>${c.telefono}</td>
-        <td><span class="canal-icon" style="${canalClass}">${c.canal}</span></td>
-        <td><span class="badge ${statusBadgeClass}">${c.estado}</span></td>
+        <td><strong>${escapeHtml(c.nombre)}</strong></td>
+        <td><span class="badge ${typeBadgeClass}">${escapeHtml(typeLabel)}</span></td>
+        <td>${escapeHtml(c.zona)}</td>
+        <td>${escapeHtml(c.telefono)}</td>
+        <td><span class="canal-icon" style="${canalClass}">${escapeHtml(c.canal)}</span></td>
+        <td><span class="badge ${statusBadgeClass}">${escapeHtml(c.estado)}</span></td>
         <td>
           <div class="table-actions">
-            <button class="btn btn-ghost btn-sm" onclick="editContact(${c.id})">✏️</button>
-            <button class="btn btn-ghost btn-sm" style="color:var(--rojo);" onclick="deleteContact(${c.id})">🗑️</button>
+            <button class="btn btn-ghost btn-sm" title="Editar contacto" onclick="editContact(${Number(c.id)})">✏️</button>
+            <button class="btn btn-ghost btn-sm" title="Eliminar contacto" style="color:var(--rojo);" onclick="deleteContact(${Number(c.id)})">🗑️</button>
           </div>
         </td>
       `;
@@ -79,7 +188,9 @@ export async function renderContacts() {
 }
 
 export async function deleteContact(id) {
-  if (!confirm('¿Está seguro de que desea eliminar este contacto de la lista?')) return;
+  const contact = contacts.find(item => Number(item.id) === Number(id));
+  const name = contact?.nombre ? ` “${contact.nombre}”` : '';
+  if (!confirm(`¿Está seguro de que desea eliminar el contacto${name}? Esta acción lo quita de la lista de destinatarios.`)) return;
 
   try {
     await apiRequest(`/contactos/${id}`, { method: 'DELETE' });
@@ -97,8 +208,8 @@ export async function saveNewContact() {
   const telefono = document.getElementById('new-c-telefono')?.value.trim() || '—';
   const canal = document.getElementById('new-c-canal')?.value;
 
-  if (!nombre) {
-    alert('Por favor ingrese el nombre del contacto.');
+  if (!nombre || !tipo || !zona) {
+    showToast('Nombre, tipo y zona son obligatorios.', true);
     return;
   }
 
@@ -119,20 +230,47 @@ export async function saveNewContact() {
   }
 }
 
-window.editContact = async (id) => {
-  const c = contacts.find(contact => contact.id === id);
-  if (!c) return;
+window.editContact = (id) => {
+  ensureEditModal();
+  const contact = contacts.find(item => Number(item.id) === Number(id));
+  if (!contact) {
+    showToast('No se encontró el contacto seleccionado.', true);
+    return;
+  }
 
-  const newName = prompt('Editar nombre:', c.nombre);
-  if (newName === null) return;
-  const newPhone = prompt("Editar teléfono (deje vacío para '—'):", c.telefono === '—' ? '' : c.telefono);
-  if (newPhone === null) return;
+  document.getElementById('edit-c-id').value = contact.id;
+  document.getElementById('edit-c-nombre').value = contact.nombre || '';
+  document.getElementById('edit-c-tipo').value = contact.tipo || CONTACT_TYPES[0];
+  document.getElementById('edit-c-zona').value = contact.zona || CONTACT_ZONES[0];
+  document.getElementById('edit-c-telefono').value = contact.telefono === '—' ? '' : (contact.telefono || '');
+
+  const editChannel = document.getElementById('edit-c-canal');
+  const channel = CONTACT_CHANNELS.includes(contact.canal) ? contact.canal : CONTACT_CHANNELS[0];
+  editChannel.value = channel;
+
+  openModal('m-edit-contacto');
+};
+
+window.saveEditedContact = async () => {
+  const id = Number(document.getElementById('edit-c-id')?.value);
+  const nombre = document.getElementById('edit-c-nombre')?.value.trim();
+  const tipo = document.getElementById('edit-c-tipo')?.value;
+  const zona = document.getElementById('edit-c-zona')?.value;
+  const telefono = document.getElementById('edit-c-telefono')?.value.trim() || '—';
+  const canal = document.getElementById('edit-c-canal')?.value;
+
+  if (!id || !nombre || !tipo || !zona) {
+    showToast('Nombre, tipo y zona son obligatorios.', true);
+    return;
+  }
 
   try {
     await apiRequest(`/contactos/${id}`, {
       method: 'PUT',
-      body: JSON.stringify({ nombre: newName.trim() || c.nombre, telefono: newPhone.trim() || '—' })
+      body: JSON.stringify({ nombre, tipo, zona, telefono, canal })
     });
+
+    closeModal('m-edit-contacto');
     await renderContacts();
     showToast('Contacto actualizado correctamente.');
   } catch (error) {
@@ -142,9 +280,15 @@ window.editContact = async (id) => {
 
 window.deleteContact = deleteContact;
 window.saveNewContact = saveNewContact;
-window.addContact = () => openModal('m-add-contacto');
+window.addContact = () => {
+  ensureContactOptions();
+  openModal('m-add-contacto');
+};
 
 export function initContactsListeners() {
+  ensureContactOptions();
+  ensureEditModal();
+
   const searchInput = document.getElementById('contact-search');
   const tipoSelect = document.getElementById('contact-filter-tipo');
   const zonaSelect = document.getElementById('contact-filter-zona');
