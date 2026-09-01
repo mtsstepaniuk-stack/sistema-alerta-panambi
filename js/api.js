@@ -1,11 +1,46 @@
 /**
  * Cliente HTTP simple para consumir el backend local.
  */
-import './real-map.js';
-import './sensor-map-fix.js';
-import './arrival-estimate.js';
 
 const API_BASE = '/api';
+
+// Algunos módulos antiguos del mapa usan fetch() directamente en lugar de
+// apiRequest(). Se protege fetch antes de cargarlos para que toda llamada
+// interna a /api incluya la sesión actual automáticamente.
+if (!window.__satAuthFetchInstalled) {
+  const originalFetch = window.fetch.bind(window);
+  window.fetch = (input, init = {}) => {
+    const rawUrl = typeof input === 'string' ? input : input?.url || '';
+    let url;
+    try {
+      url = new URL(rawUrl, window.location.origin);
+    } catch {
+      return originalFetch(input, init);
+    }
+
+    if (url.origin === window.location.origin && url.pathname.startsWith('/api/')) {
+      const token = localStorage.getItem('sat-token');
+      if (token) {
+        const headers = new Headers(
+          init.headers || (input instanceof Request ? input.headers : undefined)
+        );
+        if (!headers.has('Authorization')) {
+          headers.set('Authorization', `Bearer ${token}`);
+        }
+        return originalFetch(input, { ...init, headers });
+      }
+    }
+
+    return originalFetch(input, init);
+  };
+  window.__satAuthFetchInstalled = true;
+}
+
+// Se cargan después del puente de autenticación para que sus fetch directos
+// queden protegidos desde el primer render.
+import('./real-map.js');
+import('./sensor-map-fix.js');
+import('./arrival-estimate.js');
 
 function enrichRecipientRequest(path) {
   if (!String(path).startsWith('/contactos/destinatarios')) return path;
