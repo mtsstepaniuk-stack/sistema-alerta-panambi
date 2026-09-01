@@ -66,8 +66,30 @@ function installFix() {
   window.keepAlertPending = keepAlertPendingFixed;
 }
 
+function installTopbarLogo() {
+  if (document.getElementById('sat-topbar-logo-style')) return;
+
+  const style = document.createElement('style');
+  style.id = 'sat-topbar-logo-style';
+  style.textContent = `
+    .topbar-logo-icon {
+      background: transparent url('assets/sat-panambi-mark.svg') center / contain no-repeat !important;
+      border-radius: 0 !important;
+      width: 36px !important;
+      height: 36px !important;
+      flex: 0 0 36px !important;
+    }
+
+    .topbar-logo-icon svg {
+      display: none !important;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   installFix();
+  installTopbarLogo();
   // La pantalla de validación puede regenerar controles al navegar.
   const observer = new MutationObserver(installFix);
   observer.observe(document.body, { childList: true, subtree: true });
