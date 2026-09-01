@@ -222,7 +222,7 @@ body.dark-theme #s-login .login-box {
   padding-top: 30px !important;
 }
 
-/* Reemplaza el escudo y el título anterior por la nueva marca SAT Panambí. */
+/* Reemplaza el escudo y el título anterior por la marca SAT Panambí exacta. */
 #s-login .login-logo {
   flex-direction: column !important;
   gap: 9px !important;
@@ -232,9 +232,13 @@ body.dark-theme #s-login .login-box {
 #s-login .login-logo::before {
   content: '';
   display: block;
-  width: min(320px, 78vw);
-  height: 142px;
-  background: url('../assets/sat-panambi-logo.svg') center/contain no-repeat;
+  width: min(330px, 78vw);
+  height: 230px;
+  flex: 0 0 230px;
+  background-image: url('../assets/sat-panambi-logo-exacto.png');
+  background-position: center;
+  background-size: contain;
+  background-repeat: no-repeat;
   filter: drop-shadow(0 8px 16px rgba(0, 0, 0, .17));
 }
 
@@ -289,7 +293,8 @@ body.dark-theme #s-login .login-box {
 
   #s-login .login-logo::before {
     width: min(285px, 82vw);
-    height: 128px;
+    height: 200px;
+    flex-basis: 200px;
   }
 
   #s-login .water-bg {
