@@ -23,7 +23,7 @@ function initLoginPolish() {
   const style = document.createElement('style');
   style.id = 'login-polish-styles';
   style.textContent = `
-    /* El degradado inferior se conserva, pero se eliminan los logos UNaM/FI. */
+    /* Mantiene el degradado inferior y elimina definitivamente los logos UNaM/FI. */
     #s-login {
       padding: 34px 20px !important;
     }
@@ -32,17 +32,25 @@ function initLoginPolish() {
       display: none !important;
     }
 
-    /* Da aire real entre la marca SAT Panambí y el texto de acceso. */
+    /* Usa exactamente el PNG provisto, sin recrear texto ni colores. */
     #s-login .login-logo {
+      flex-direction: column !important;
       gap: 18px !important;
       margin-bottom: 22px !important;
     }
 
     #s-login .login-logo::before {
+      content: '' !important;
+      display: block !important;
       width: min(300px, 76vw) !important;
-      height: 152px !important;
-      margin: 0 auto 8px !important;
+      height: 200px !important;
+      margin: 0 auto 10px !important;
       flex: 0 0 auto !important;
+      background-image: url('../assets/sat-panambi-logo-exacto.png') !important;
+      background-position: center !important;
+      background-repeat: no-repeat !important;
+      background-size: contain !important;
+      filter: none !important;
     }
 
     #s-login .login-logo-text {
@@ -69,8 +77,8 @@ function initLoginPolish() {
 
       #s-login .login-logo::before {
         width: min(270px, 80vw) !important;
-        height: 138px !important;
-        margin-bottom: 7px !important;
+        height: 180px !important;
+        margin-bottom: 8px !important;
       }
     }
   `;
