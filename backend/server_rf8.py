@@ -6,7 +6,7 @@ Mantiene server_thresholds.py intacto y completa la alerta manual con:
 - mensaje;
 - canales simulados seleccionados;
 - destinatarios seleccionados, respetando la política RF4;
-- filtrado por el canal real registrado de cada contacto.
+- filtrado por los canales disponibles de cada contacto.
 """
 
 from http.server import ThreadingHTTPServer
@@ -18,6 +18,12 @@ base = previous.base
 
 ALLOWED_CHANNELS = {"WhatsApp", "SMS", "Llamada", "Altoparlante"}
 DIRECT_CONTACT_CHANNELS = {"WhatsApp", "SMS", "Llamada"}
+CHANNEL_ICON = {
+    "WhatsApp": "📱",
+    "SMS": "💬",
+    "Llamada": "📞",
+    "Altoparlante": "📢",
+}
 
 
 def ensure_rf8_columns():
@@ -41,13 +47,19 @@ def _normalize_channels(value):
 
     result = []
     for channel in raw:
-        clean = channel.replace("📱", "").replace("💬", "").replace("📞", "").replace("📢", "").strip()
+        clean = (
+            channel.replace("📱", "")
+            .replace("💬", "")
+            .replace("📞", "")
+            .replace("📢", "")
+            .strip()
+        )
         if clean in ALLOWED_CHANNELS and clean not in result:
             result.append(clean)
     return result
 
 
-def _contact_channel(value):
+def _contact_primary_channel(value):
     return (
         str(value or "")
         .replace("📱", "")
@@ -58,6 +70,43 @@ def _contact_channel(value):
     )
 
 
+def _contact_available_channels(contact):
+    """Devuelve los canales configurados/disponibles para el contacto del prototipo.
+
+    La base histórica guarda un canal principal por contacto. Para que el flujo RF8
+    pueda representar contactos con más de un medio disponible, se amplía de forma
+    determinística sin cambiar los datos originales:
+    - un móvil registrado con SMS también admite WhatsApp;
+    - algunos móviles cuyo canal principal es WhatsApp incluyen además llamada;
+    - los demás conservan su canal principal.
+
+    Así se obtienen combinaciones como 💬📱 o 📱📞, manteniendo consistencia entre
+    lo que se muestra y los filtros de envío.
+    """
+    primary = _contact_primary_channel(contact.get("canal"))
+    phone = str(contact.get("telefono") or "")
+    contact_id = int(contact.get("id") or 0)
+
+    channels = []
+    if primary in DIRECT_CONTACT_CHANNELS:
+        channels.append(primary)
+
+    is_mobile = "+54 9" in phone
+
+    if primary == "SMS" and is_mobile and "WhatsApp" not in channels:
+        channels.append("WhatsApp")
+
+    if primary == "WhatsApp" and is_mobile and contact_id % 5 == 0 and "Llamada" not in channels:
+        channels.append("Llamada")
+
+    return channels
+
+
+def _channel_icons(channels):
+    ordered = ["SMS", "WhatsApp", "Llamada"]
+    return "".join(CHANNEL_ICON[channel] for channel in ordered if channel in channels)
+
+
 def _filter_contacts_by_channels(contacts, channels):
     direct = {channel for channel in channels if channel in DIRECT_CONTACT_CHANNELS}
     if not direct:
@@ -65,7 +114,22 @@ def _filter_contacts_by_channels(contacts, channels):
         # almacenada en la ficha de cada contacto. Si es el único canal, no se
         # descartan destinatarios por su teléfono.
         return list(contacts)
-    return [contact for contact in contacts if _contact_channel(contact.get("canal")) in direct]
+
+    return [
+        contact for contact in contacts
+        if direct.intersection(_contact_available_channels(contact))
+    ]
+
+
+def _contact_for_recipient_table(contact):
+    available = _contact_available_channels(contact)
+    result = dict(contact)
+    result["canal_principal"] = contact.get("canal")
+    result["canales_disponibles"] = available
+    # La tabla del Paso 2 ya tiene una columna Canal. Para mantenerla compacta,
+    # allí se muestran únicamente los iconos de todos los medios disponibles.
+    result["canal"] = _channel_icons(available) or "—"
+    return result
 
 
 class AppHandler(previous.AppHandler):
@@ -86,6 +150,7 @@ class AppHandler(previous.AppHandler):
             with base.get_conn() as conn:
                 contactos = previous.destinatarios_por_riesgo(conn, zona, riesgo)
                 contactos = _filter_contacts_by_channels(contactos, canales)
+                contactos = [_contact_for_recipient_table(contact) for contact in contactos]
 
             resumen = {
                 "Vecino ribereño": sum(1 for c in contactos if c["tipo"] == "Vecino ribereño"),
