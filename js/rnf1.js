@@ -17,23 +17,28 @@ function ensurePanel() {
 
   if (!summaryGrid) return;
 
-  // RNF1 + los cuatro resúmenes deben entrar en el mismo renglón en escritorio.
+  // RNF1 + los cinco resúmenes deben entrar en el mismo renglón en escritorio.
   summaryGrid.classList.add('history-summary-with-rnf1');
-  summaryGrid.style.gridTemplateColumns = 'minmax(330px,1.25fr) repeat(4,minmax(0,1fr))';
+  summaryGrid.style.gridTemplateColumns = 'minmax(300px,1.25fr) repeat(5,minmax(0,1fr))';
   summaryGrid.style.alignItems = 'stretch';
 
   if (!document.getElementById('rnf1-history-layout-styles')) {
     const style = document.createElement('style');
     style.id = 'rnf1-history-layout-styles';
     style.textContent = `
+      /* Mantiene también Acciones registradas en la misma fila aunque history.js
+         actualice dinámicamente el grid después de cargar los datos. */
+      #s-historial .history-summary-with-rnf1 {
+        grid-template-columns: minmax(300px,1.25fr) repeat(5,minmax(0,1fr)) !important;
+      }
       #s-historial .history-summary-with-rnf1 > .card {
         min-width: 0;
       }
       #s-historial .history-summary-with-rnf1 > .card:not(#rnf1-status-panel) {
-        padding: 12px 12px !important;
+        padding: 12px 10px !important;
       }
       #s-historial .history-summary-with-rnf1 > .card:not(#rnf1-status-panel) .card-title {
-        font-size: 11px;
+        font-size: 10px;
         white-space: nowrap;
       }
       #s-historial #rnf1-status-panel {
