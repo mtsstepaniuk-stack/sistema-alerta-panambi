@@ -6,5 +6,5 @@ services:
     branch: main
     autoDeployTrigger: commit
     buildCommand: python -m compileall backend
-    startCommand: python backend/server_rnf1.py
+    startCommand: python backend/server_rnf2.py
     healthCheckPath: /api/health
