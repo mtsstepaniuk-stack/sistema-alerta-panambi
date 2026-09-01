@@ -303,3 +303,17 @@ body.dark-theme #s-login .login-box {
     background-size: min(500px, 92vw) auto !important;
   }
 }
+
+/* ===== TOPBAR: LOGO SAT PANAMBÍ ===== */
+.topbar-logo-icon {
+  background: transparent url('../assets/sat-panambi-mark.svg') center / contain no-repeat !important;
+  border-radius: 0 !important;
+  width: 38px !important;
+  height: 38px !important;
+  flex: 0 0 38px !important;
+  box-shadow: none !important;
+}
+
+.topbar-logo-icon svg {
+  display: none !important;
+}
