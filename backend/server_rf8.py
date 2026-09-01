@@ -5,7 +5,8 @@ Mantiene server_thresholds.py intacto y completa la alerta manual con:
 - zona y nivel de riesgo;
 - mensaje;
 - canales simulados seleccionados;
-- destinatarios seleccionados, respetando la política RF4.
+- destinatarios seleccionados, respetando la política RF4;
+- filtrado por el canal real registrado de cada contacto.
 """
 
 from http.server import ThreadingHTTPServer
@@ -16,6 +17,7 @@ import server_thresholds as previous
 base = previous.base
 
 ALLOWED_CHANNELS = {"WhatsApp", "SMS", "Llamada", "Altoparlante"}
+DIRECT_CONTACT_CHANNELS = {"WhatsApp", "SMS", "Llamada"}
 
 
 def ensure_rf8_columns():
@@ -45,7 +47,65 @@ def _normalize_channels(value):
     return result
 
 
+def _contact_channel(value):
+    return (
+        str(value or "")
+        .replace("📱", "")
+        .replace("💬", "")
+        .replace("📞", "")
+        .replace("📢", "")
+        .strip()
+    )
+
+
+def _filter_contacts_by_channels(contacts, channels):
+    direct = {channel for channel in channels if channel in DIRECT_CONTACT_CHANNELS}
+    if not direct:
+        # Altoparlante es un canal de difusión zonal, no una capacidad individual
+        # almacenada en la ficha de cada contacto. Si es el único canal, no se
+        # descartan destinatarios por su teléfono.
+        return list(contacts)
+    return [contact for contact in contacts if _contact_channel(contact.get("canal")) in direct]
+
+
 class AppHandler(previous.AppHandler):
+    def do_GET(self):
+        path = urlparse(self.path).path
+        if path != "/api/contactos/destinatarios":
+            return super().do_GET()
+
+        try:
+            query = self.parse_query()
+            zona = query.get("zona", "Ribera Norte")
+            riesgo = query.get("riesgo")
+            canales = _normalize_channels(query.get("canales", ""))
+
+            if not riesgo:
+                return super().do_GET()
+
+            with base.get_conn() as conn:
+                contactos = previous.destinatarios_por_riesgo(conn, zona, riesgo)
+                contactos = _filter_contacts_by_channels(contactos, canales)
+
+            resumen = {
+                "Vecino ribereño": sum(1 for c in contactos if c["tipo"] == "Vecino ribereño"),
+                "Institución": sum(1 for c in contactos if c["tipo"] == "Institución"),
+                "Autoridad": sum(1 for c in contactos if c["tipo"] == "Autoridad"),
+            }
+
+            return self.send_json(
+                {
+                    "ok": True,
+                    "contactos": contactos,
+                    "resumen": resumen,
+                    "criterio": previous.notification_policy_text(riesgo),
+                    "riesgo": base.normalize_risk(riesgo),
+                    "canales": canales,
+                }
+            )
+        except Exception as exc:
+            return self.send_json({"ok": False, "error": str(exc)}, 500)
+
     def do_POST(self):
         path = urlparse(self.path).path
         if path != "/api/alertas/manuales":
@@ -90,12 +150,16 @@ class AppHandler(previous.AppHandler):
 
             with base.get_conn() as conn:
                 eligible = previous.destinatarios_por_riesgo(conn, zona, clean_risk)
+                eligible = _filter_contacts_by_channels(eligible, canales)
                 eligible_ids = {int(contact["id"]) for contact in eligible}
                 selected_ids = [contact_id for contact_id in requested_ids if contact_id in eligible_ids]
 
                 if not selected_ids:
                     return self.send_json(
-                        {"ok": False, "error": "Los destinatarios seleccionados no corresponden a la zona y nivel de riesgo elegidos."},
+                        {
+                            "ok": False,
+                            "error": "Los destinatarios seleccionados no corresponden a la zona, nivel de riesgo y canales elegidos.",
+                        },
                         400,
                     )
 
