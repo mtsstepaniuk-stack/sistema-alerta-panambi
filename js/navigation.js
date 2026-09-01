@@ -72,6 +72,10 @@ export function navigate(id) {
       item.classList.remove('active');
     }
   });
+
+  // Los módulos del mapa y otros complementos escuchan este evento para
+  // recalcular su contenido después de una navegación con la sesión ya cargada.
+  window.dispatchEvent(new CustomEvent('sat:navigate', { detail: { id } }));
 }
 
 export function openPublicReport() {
