@@ -3,6 +3,8 @@ services:
     name: sat-inundaciones-panambi-g11
     runtime: python
     plan: free
+    branch: main
+    autoDeployTrigger: commit
     buildCommand: python -m compileall backend
     startCommand: python backend/server_final.py
     healthCheckPath: /api/health
