@@ -16,6 +16,68 @@ import { renderPendingAlert } from './alerts.js';
 import './manual-alert-rf8.js';
 import { refreshUserMenu } from './auth.js';
 
+// Ajustes visuales puntuales del login.
+function initLoginPolish() {
+  if (document.getElementById('login-polish-styles')) return;
+
+  const style = document.createElement('style');
+  style.id = 'login-polish-styles';
+  style.textContent = `
+    /* El degradado inferior se conserva, pero se eliminan los logos UNaM/FI. */
+    #s-login {
+      padding: 34px 20px !important;
+    }
+
+    #s-login .water-bg {
+      display: none !important;
+    }
+
+    /* Da aire real entre la marca SAT Panambí y el texto de acceso. */
+    #s-login .login-logo {
+      gap: 18px !important;
+      margin-bottom: 22px !important;
+    }
+
+    #s-login .login-logo::before {
+      width: min(300px, 76vw) !important;
+      height: 152px !important;
+      margin: 0 auto 8px !important;
+      flex: 0 0 auto !important;
+    }
+
+    #s-login .login-logo-text {
+      display: block !important;
+      width: 100%;
+      text-align: center;
+    }
+
+    #s-login .login-logo-text p {
+      display: block !important;
+      margin: 0 !important;
+      line-height: 1.35 !important;
+    }
+
+    @media (max-width: 640px) {
+      #s-login {
+        padding: 22px 14px !important;
+      }
+
+      #s-login .login-logo {
+        gap: 14px !important;
+        margin-bottom: 18px !important;
+      }
+
+      #s-login .login-logo::before {
+        width: min(270px, 80vw) !important;
+        height: 138px !important;
+        margin-bottom: 7px !important;
+      }
+    }
+  `;
+
+  document.head.appendChild(style);
+}
+
 // Setup Dark Mode theme switcher
 function initThemeSwitcher() {
   const toggleBtns = document.querySelectorAll('.theme-toggle-btn');
@@ -51,6 +113,9 @@ function updateThemeIcons(isDark) {
 // App Initialization
 document.addEventListener('DOMContentLoaded', () => {
   console.log('SAT Inundaciones - Initializing application modules...');
+
+  // 0. Ajustes visuales del login
+  initLoginPolish();
   
   // 1. Start Clock
   initClock();
