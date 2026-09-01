@@ -78,13 +78,7 @@ function ensureChannelLegend() {
     'flex-wrap:wrap'
   ].join(';');
 
-  legend.innerHTML = `
-    <strong style="color:var(--texto-base);">Canales disponibles:</strong>
-    <span>💬 SMS</span>
-    <span>📱 WhatsApp</span>
-    <span>📞 Llamada</span>
-    <span style="font-size:11px;">Si aparecen varios íconos, el contacto dispone de más de un medio.</span>
-  `;
+  legend.innerHTML = `<span>💬 = SMS 📱 = WhatsApp 📞 = Llamada 📢 = Altoparlante</span>`;
 
   tableWrap.after(legend);
 }
