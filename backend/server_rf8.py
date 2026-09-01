@@ -133,6 +133,37 @@ def _contact_for_recipient_table(contact):
 
 
 class AppHandler(previous.AppHandler):
+    def serve_file(self):
+        """Expone assets visuales sin abrir otros archivos internos del repo."""
+        parsed = urlparse(self.path)
+        clean_path = parsed.path.strip("/") or "index.html"
+        parts = base.Path(clean_path).parts
+
+        if parts and parts[0] == "assets":
+            assets_root = (base.ROOT_DIR / "assets").resolve()
+            file_path = (base.ROOT_DIR / clean_path).resolve()
+
+            if (
+                not str(file_path).startswith(str(assets_root))
+                or any(part.startswith(".") for part in parts)
+                or not file_path.exists()
+                or not file_path.is_file()
+            ):
+                self.send_error(404)
+                return
+
+            content_type, _ = base.mimetypes.guess_type(str(file_path))
+            payload = file_path.read_bytes()
+            self.send_response(200)
+            self.send_header("Content-Type", content_type or "application/octet-stream")
+            self.send_header("Content-Length", str(len(payload)))
+            self.send_header("Cache-Control", "public, max-age=3600")
+            self.end_headers()
+            self.wfile.write(payload)
+            return
+
+        return super().serve_file()
+
     def do_GET(self):
         path = urlparse(self.path).path
         if path != "/api/contactos/destinatarios":
