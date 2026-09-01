@@ -4,7 +4,7 @@
  * que ya realiza alerts.js.
  *
  * Los canales seleccionados en el Paso 1 también filtran los destinatarios
- * del Paso 2 según el canal REAL registrado para cada contacto.
+ * del Paso 2 según los medios disponibles para cada contacto.
  */
 
 function selectedChannels() {
@@ -12,6 +12,7 @@ function selectedChannels() {
     .filter(label => label.querySelector('input[type="checkbox"]')?.checked)
     .map(label => label.textContent
       .replace(/[📱💬📞📢]/g, '')
+      .replace('*', '')
       .replace(/\s+/g, ' ')
       .trim())
     .filter(Boolean);
@@ -42,6 +43,50 @@ function ensureSourceField() {
     </select>
   `;
   title?.after(group);
+}
+
+function ensureChannelRequiredLabel() {
+  const step = document.getElementById('emit-step-1');
+  if (!step) return;
+
+  const labels = Array.from(step.querySelectorAll('.input-group > label'));
+  const channelLabel = labels.find(label => label.textContent.trim().startsWith('Canal de envío'));
+  if (channelLabel && !channelLabel.textContent.includes('*')) {
+    channelLabel.textContent = 'Canal de envío *';
+  }
+}
+
+function ensureChannelLegend() {
+  const tbody = document.getElementById('emit-dest-tbody');
+  const table = tbody?.closest('table');
+  const tableWrap = table?.parentElement;
+  if (!tableWrap || document.getElementById('emit-channel-legend')) return;
+
+  const legend = document.createElement('div');
+  legend.id = 'emit-channel-legend';
+  legend.style.cssText = [
+    'margin-top:10px',
+    'padding:10px 12px',
+    'border:1px solid var(--gris-border)',
+    'border-radius:8px',
+    'background:var(--gris-bg)',
+    'font-size:12px',
+    'color:var(--texto-sub)',
+    'display:flex',
+    'align-items:center',
+    'gap:14px',
+    'flex-wrap:wrap'
+  ].join(';');
+
+  legend.innerHTML = `
+    <strong style="color:var(--texto-base);">Canales disponibles:</strong>
+    <span>💬 SMS</span>
+    <span>📱 WhatsApp</span>
+    <span>📞 Llamada</span>
+    <span style="font-size:11px;">Si aparecen varios íconos, el contacto dispone de más de un medio.</span>
+  `;
+
+  tableWrap.after(legend);
 }
 
 function ensureSourceSummary() {
@@ -75,19 +120,69 @@ function showLocalError(message) {
   showLocalError.timer = setTimeout(() => toast.classList.remove('visible', 'error'), 3200);
 }
 
+function markInvalid(element) {
+  if (!element) return;
+  element.style.borderColor = 'var(--rojo)';
+  element.style.boxShadow = '0 0 0 3px rgba(192,57,43,.12)';
+}
+
+function clearInvalid(element) {
+  if (!element) return;
+  element.style.borderColor = '';
+  element.style.boxShadow = '';
+}
+
+function validateStepOne() {
+  const fuente = document.getElementById('emit-fuente');
+  const riesgo = document.getElementById('emit-riesgo');
+  const zona = document.getElementById('emit-zona');
+  const mensaje = document.getElementById('emit-msg');
+
+  [fuente, riesgo, zona, mensaje].forEach(clearInvalid);
+
+  const missing = [];
+
+  if (!fuente?.value?.trim()) {
+    missing.push({ element: fuente, label: 'fuente de la alerta' });
+  }
+  if (!riesgo?.value || riesgo.value === 'Seleccionar...') {
+    missing.push({ element: riesgo, label: 'nivel de riesgo' });
+  }
+  if (!zona?.value || zona.value === 'Seleccionar...') {
+    missing.push({ element: zona, label: 'zona afectada' });
+  }
+  if (!mensaje?.value?.trim()) {
+    missing.push({ element: mensaje, label: 'mensaje de la alerta' });
+  }
+
+  if (missing.length) {
+    missing.forEach(item => markInvalid(item.element));
+    missing[0].element?.focus();
+    showLocalError(`Complete los campos obligatorios: ${missing.map(item => item.label).join(', ')}.`);
+    return false;
+  }
+
+  if (selectedChannels().length === 0) {
+    showLocalError('Seleccione al menos un canal de envío antes de continuar.');
+    return false;
+  }
+
+  return true;
+}
+
+function installRequiredFieldCleanup() {
+  ['emit-fuente', 'emit-riesgo', 'emit-zona'].forEach(id => {
+    document.getElementById(id)?.addEventListener('change', event => clearInvalid(event.currentTarget));
+  });
+  document.getElementById('emit-msg')?.addEventListener('input', event => clearInvalid(event.currentTarget));
+}
+
 function installEmitValidation() {
   const original = window.emitManualAlert;
   if (typeof original !== 'function' || original.__rf8Wrapped) return;
 
   const wrapped = async function rf8EmitManualAlert() {
-    if (!sourceValue()) {
-      showLocalError('Seleccione la fuente de la alerta antes de emitir.');
-      return;
-    }
-    if (selectedChannels().length === 0) {
-      showLocalError('Seleccione al menos un canal de envío.');
-      return;
-    }
+    if (!validateStepOne()) return;
     return original();
   };
   wrapped.__rf8Wrapped = true;
@@ -99,10 +194,7 @@ function installStepValidation() {
   if (typeof original !== 'function' || original.__rf8ChannelWrapped) return;
 
   const wrapped = function rf8EmitStep(step) {
-    if (Number(step) === 2 && selectedChannels().length === 0) {
-      showLocalError('Seleccione al menos un canal de envío antes de continuar.');
-      return;
-    }
+    if (Number(step) === 2 && !validateStepOne()) return;
     return original(step);
   };
   wrapped.__rf8ChannelWrapped = true;
@@ -117,6 +209,7 @@ function installResetHook() {
     const result = original(...args);
     const source = document.getElementById('emit-fuente');
     if (source) source.selectedIndex = 0;
+    ['emit-fuente', 'emit-riesgo', 'emit-zona', 'emit-msg'].forEach(id => clearInvalid(document.getElementById(id)));
     updateSourceSummary();
     return result;
   };
@@ -166,8 +259,11 @@ function installFetchEnrichment() {
 
 function initRf8() {
   ensureSourceField();
+  ensureChannelRequiredLabel();
+  ensureChannelLegend();
   ensureSourceSummary();
   updateSourceSummary();
+  installRequiredFieldCleanup();
   installEmitValidation();
   installStepValidation();
   installResetHook();
