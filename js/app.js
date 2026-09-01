@@ -14,7 +14,6 @@ import './users.js';
 import { initThresholds } from './thresholds.js';
 import { renderPendingAlert } from './alerts.js';
 import './manual-alert-rf8.js';
-import './rf8-channel-legend.js';
 import { refreshUserMenu } from './auth.js';
 
 // Setup Dark Mode theme switcher
