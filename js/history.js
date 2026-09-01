@@ -3,6 +3,7 @@
  * Lee el historial desde SQLite y aplica filtros desde la interfaz.
  */
 import { apiRequest, buildQuery } from './api.js';
+import { currentUser } from './auth.js';
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -134,20 +135,29 @@ export async function renderHistory() {
 
   ensureActionsFilter(filterBar);
 
+  // Limpia mensajes/eventos anteriores antes de cualquier nueva carga.
+  container.querySelectorAll('.hist-entry').forEach(el => el.remove());
+  const loadMoreBtnWrap = container.querySelector('div[style*="text-align:center"]');
+  if (loadMoreBtnWrap) loadMoreBtnWrap.style.display = 'none';
+
+  // La app inicializa módulos antes del login. No se consulta el historial
+  // hasta que exista una sesión válida, evitando el falso mensaje de 401.
+  if (!currentUser()) return;
+
   const selectZona = filterBar.querySelector('select:nth-of-type(1)')?.value || 'Todas';
   const selectRiesgo = filterBar.querySelector('select:nth-of-type(2)')?.value || 'Todos';
   const selectTipo = filterBar.querySelector('select:nth-of-type(3)')?.value || 'Todos';
   const dateFrom = filterBar.querySelectorAll('input[type="date"]')[0]?.value;
   const dateTo = filterBar.querySelectorAll('input[type="date"]')[1]?.value;
 
-  container.querySelectorAll('.hist-entry').forEach(el => el.remove());
-  const loadMoreBtnWrap = container.querySelector('div[style*="text-align:center"]');
-  if (loadMoreBtnWrap) loadMoreBtnWrap.style.display = 'none';
-
   let data;
   try {
     data = await apiRequest(`/historial${buildQuery({ zona: selectZona, riesgo: selectRiesgo, tipo: selectTipo, desde: dateFrom, hasta: dateTo })}`);
   } catch (error) {
+    // apiRequest ya elimina una sesión realmente vencida y redirige al login.
+    // En ese caso no dejamos un cartel rojo obsoleto en Historial.
+    if (!currentUser()) return;
+
     const errorDiv = document.createElement('div');
     errorDiv.className = 'hist-entry';
     errorDiv.style.justifyContent = 'center';
@@ -217,6 +227,7 @@ export function clearHistoryFilters() {
   renderHistory();
 }
 
+window.renderHistory = renderHistory;
 window.applyHistoryFilters = renderHistory;
 window.clearHistoryFilters = clearHistoryFilters;
 
