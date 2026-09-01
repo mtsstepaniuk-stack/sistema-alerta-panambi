@@ -19,17 +19,34 @@ function enrichRecipientRequest(path) {
   return `${pathname}?${params.toString()}`;
 }
 
+function clearExpiredSession() {
+  localStorage.removeItem('sat-user');
+  localStorage.removeItem('sat-token');
+  document.body.classList.remove('admin-role');
+}
+
 export async function apiRequest(path, options = {}) {
   const requestPath = enrichRecipientRequest(path);
+  const token = localStorage.getItem('sat-token');
+
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(options.headers || {})
+  };
+
   const response = await fetch(`${API_BASE}${requestPath}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers || {})
-    },
-    ...options
+    ...options,
+    headers
   });
 
   const data = await response.json().catch(() => ({}));
+
+  if (response.status === 401 && requestPath !== '/auth/login') {
+    clearExpiredSession();
+    setTimeout(() => window.navigate?.('s-login'), 0);
+  }
+
   if (!response.ok || data.ok === false) {
     throw new Error(data.error || 'Error al comunicarse con el servidor.');
   }
