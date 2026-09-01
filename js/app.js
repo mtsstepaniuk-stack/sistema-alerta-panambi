@@ -16,6 +16,7 @@ import { renderPendingAlert } from './alerts.js';
 import './manual-alert-rf8.js';
 import './final-rfs.js';
 import './rf14-pending-fix.js?v=20260901-3';
+import './rnf1.js';
 import { refreshUserMenu } from './auth.js';
 
 // Ajustes visuales puntuales del login.
