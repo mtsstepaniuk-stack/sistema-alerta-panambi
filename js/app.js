@@ -18,39 +18,64 @@ import { refreshUserMenu } from './auth.js';
 
 // Ajustes visuales puntuales del login.
 function initLoginPolish() {
+  const loginLogo = document.querySelector('#s-login .login-logo');
+
+  // El logo se renderiza como una imagen HTML real, no como background CSS.
+  // Así se respeta siempre la proporción completa del PNG.
+  if (loginLogo && !document.getElementById('login-sat-logo')) {
+    const logoImage = document.createElement('img');
+    logoImage.id = 'login-sat-logo';
+    logoImage.src = 'assets/sat-panambi-logo-exacto.png?v=3';
+    logoImage.alt = 'SAT Panambí - Municipalidad de Panambí';
+    loginLogo.prepend(logoImage);
+  }
+
   if (document.getElementById('login-polish-styles')) return;
 
   const style = document.createElement('style');
   style.id = 'login-polish-styles';
   style.textContent = `
-    /* Mantiene el degradado inferior y elimina definitivamente los logos UNaM/FI. */
     #s-login {
       padding: 34px 20px !important;
     }
 
+    /* Sin logos institucionales en la parte inferior. */
     #s-login .water-bg {
       display: none !important;
     }
 
-    /* Usa exactamente el PNG provisto, sin recrear texto ni colores. */
     #s-login .login-logo {
+      display: flex !important;
       flex-direction: column !important;
-      gap: 18px !important;
+      align-items: center !important;
+      justify-content: center !important;
+      gap: 0 !important;
       margin-bottom: 22px !important;
     }
 
+    /* Desactiva completamente el antiguo logo dibujado como pseudo-elemento. */
     #s-login .login-logo::before {
-      content: '' !important;
+      content: none !important;
+      display: none !important;
+      background: none !important;
+    }
+
+    #s-login #login-sat-logo {
       display: block !important;
       width: min(300px, 76vw) !important;
-      height: 200px !important;
-      margin: 0 auto 10px !important;
+      height: auto !important;
+      max-height: 210px !important;
+      object-fit: contain !important;
+      object-position: center !important;
+      margin: 0 auto 20px !important;
+      padding: 0 !important;
       flex: 0 0 auto !important;
-      background-image: url('../assets/sat-panambi-logo-exacto.png') !important;
-      background-position: center !important;
-      background-repeat: no-repeat !important;
-      background-size: contain !important;
       filter: none !important;
+    }
+
+    #s-login .login-logo-shield,
+    #s-login .login-logo-text h1 {
+      display: none !important;
     }
 
     #s-login .login-logo-text {
@@ -70,15 +95,14 @@ function initLoginPolish() {
         padding: 22px 14px !important;
       }
 
-      #s-login .login-logo {
-        gap: 14px !important;
-        margin-bottom: 18px !important;
+      #s-login #login-sat-logo {
+        width: min(270px, 80vw) !important;
+        max-height: 190px !important;
+        margin-bottom: 16px !important;
       }
 
-      #s-login .login-logo::before {
-        width: min(270px, 80vw) !important;
-        height: 180px !important;
-        margin-bottom: 8px !important;
+      #s-login .login-logo {
+        margin-bottom: 18px !important;
       }
     }
   `;
