@@ -22,6 +22,34 @@ const CONTACT_ZONES = [
 ];
 const CONTACT_CHANNELS = ['📱 WhatsApp', '💬 SMS', '📞 Llamada'];
 
+function ensureContactThemeStyles() {
+  if (document.getElementById('contact-theme-fixes')) return;
+
+  const style = document.createElement('style');
+  style.id = 'contact-theme-fixes';
+  style.textContent = `
+    /* Los filtros de Contactos mantienen fondo claro; en modo oscuro
+       se fuerza texto oscuro para conservar el contraste. */
+    body.dark-theme #contact-filter-tipo,
+    body.dark-theme #contact-filter-zona {
+      background: #ffffff !important;
+      color: #1f2d3d !important;
+      -webkit-text-fill-color: #1f2d3d !important;
+      border-color: #cdd9e2 !important;
+      color-scheme: light;
+    }
+
+    body.dark-theme #contact-filter-tipo option,
+    body.dark-theme #contact-filter-zona option {
+      background: #ffffff !important;
+      color: #1f2d3d !important;
+      -webkit-text-fill-color: #1f2d3d !important;
+    }
+  `;
+
+  document.head.appendChild(style);
+}
+
 function escapeHtml(value) {
   return String(value ?? '')
     .replaceAll('&', '&amp;')
@@ -286,6 +314,7 @@ window.addContact = () => {
 };
 
 export function initContactsListeners() {
+  ensureContactThemeStyles();
   ensureContactOptions();
   ensureEditModal();
 
