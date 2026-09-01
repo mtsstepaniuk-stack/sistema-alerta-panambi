@@ -1,5 +1,9 @@
 /**
  * Ajuste visual RF8: leyenda compacta de canales en el Paso 2.
+ *
+ * Se aplica una sola vez al cargar la interfaz. No se usa MutationObserver
+ * porque observar atributos mientras se modifican estilos puede provocar un
+ * bucle de mutaciones y bloquear la pantalla.
  */
 
 function compactChannelLegend() {
@@ -21,12 +25,6 @@ function compactChannelLegend() {
 
 function initCompactChannelLegend() {
   compactChannelLegend();
-
-  const step2 = document.getElementById('emit-step-2');
-  if (!step2) return;
-
-  const observer = new MutationObserver(() => compactChannelLegend());
-  observer.observe(step2, { childList: true, subtree: true, attributes: true });
 }
 
 if (document.readyState === 'loading') {
