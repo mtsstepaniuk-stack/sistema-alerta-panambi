@@ -1,7 +1,5 @@
 /**
- * Corrección puntual RF14: el flujo "Mantener pendiente" usaba una variable
- * inexistente (`observacion`) al construir el JSON. Este módulo reemplaza el
- * listener del botón por la implementación correcta sin tocar el login.
+ * Corrección puntual RF14 y ajuste visual de identidad SAT Panambí.
  */
 import { apiRequest } from './api.js';
 import { showToast } from './modals.js';
@@ -57,7 +55,6 @@ function installFix() {
   const current = document.getElementById('keep-alert-pending-btn');
   if (!current || current.dataset.rf14Fixed === '1') return;
 
-  // Clonar elimina el listener defectuoso agregado por final-rfs.js.
   const fixed = current.cloneNode(true);
   fixed.dataset.rf14Fixed = '1';
   fixed.addEventListener('click', keepAlertPendingFixed);
@@ -67,30 +64,56 @@ function installFix() {
 }
 
 function installTopbarLogo() {
-  if (document.getElementById('sat-topbar-logo-style')) return;
+  document.querySelectorAll('.topbar-logo-icon').forEach((container) => {
+    if (container.dataset.satLogoInstalled === '1') return;
 
-  const style = document.createElement('style');
-  style.id = 'sat-topbar-logo-style';
-  style.textContent = `
-    .topbar-logo-icon {
-      background: transparent url('assets/sat-panambi-mark.svg') center / contain no-repeat !important;
-      border-radius: 0 !important;
-      width: 36px !important;
-      height: 36px !important;
-      flex: 0 0 36px !important;
-    }
+    // Elimina físicamente el escudo SVG anterior; no depende de reglas CSS.
+    container.replaceChildren();
+    container.dataset.satLogoInstalled = '1';
 
-    .topbar-logo-icon svg {
-      display: none !important;
-    }
-  `;
-  document.head.appendChild(style);
+    const img = document.createElement('img');
+    img.src = 'assets/sat-panambi-mark.svg?v=20260901-3';
+    img.alt = 'SAT Panambí';
+    img.className = 'sat-topbar-mark';
+    img.style.cssText = [
+      'display:block',
+      'width:40px',
+      'height:40px',
+      'max-width:40px',
+      'max-height:40px',
+      'object-fit:contain',
+      'object-position:center',
+      'margin:0',
+      'padding:0'
+    ].join(';');
+
+    container.style.cssText = [
+      'width:40px !important',
+      'height:40px !important',
+      'min-width:40px !important',
+      'flex:0 0 40px !important',
+      'display:flex !important',
+      'align-items:center !important',
+      'justify-content:center !important',
+      'background:transparent !important',
+      'border-radius:0 !important',
+      'overflow:visible !important'
+    ].join(';');
+
+    container.appendChild(img);
+  });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+function installAll() {
   installFix();
   installTopbarLogo();
-  // La pantalla de validación puede regenerar controles al navegar.
-  const observer = new MutationObserver(installFix);
-  observer.observe(document.body, { childList: true, subtree: true });
-});
+}
+
+// Los módulos se cargan al final del HTML: intentamos de inmediato y también
+// mantenemos un observador por si alguna pantalla vuelve a renderizar el header.
+installAll();
+
+document.addEventListener('DOMContentLoaded', installAll, { once: true });
+
+const observer = new MutationObserver(installAll);
+observer.observe(document.documentElement, { childList: true, subtree: true });
