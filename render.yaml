@@ -4,5 +4,5 @@ services:
     runtime: python
     plan: free
     buildCommand: python -m compileall backend
-    startCommand: python backend/server_thresholds.py
+    startCommand: python backend/server_rf8.py
     healthCheckPath: /api/health
