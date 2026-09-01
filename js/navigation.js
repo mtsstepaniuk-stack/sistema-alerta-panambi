@@ -72,6 +72,7 @@ export function navigate(id) {
 
 export function openPublicReport() {
   localStorage.removeItem('sat-user');
+  localStorage.removeItem('sat-token');
   document.body.classList.remove('admin-role');
   document.body.classList.add('public-report-mode');
   window.resetReporte?.();
