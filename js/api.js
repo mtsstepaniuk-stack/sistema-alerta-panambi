@@ -22,7 +22,8 @@ function enrichRecipientRequest(path) {
 function clearExpiredSession() {
   localStorage.removeItem('sat-user');
   localStorage.removeItem('sat-token');
-  document.body.classList.remove('admin-role');
+  document.body.classList.remove('admin-role', 'technical-role');
+  window.refreshFinalRoleVisibility?.();
 }
 
 export async function apiRequest(path, options = {}) {
