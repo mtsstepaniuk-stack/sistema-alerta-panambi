@@ -20,6 +20,7 @@ import './rnf1.js';
 import './rnf2.js';
 import './map-fullwidth.js';
 import './mobile-layout.js';
+import './numeric-inputs.js';
 import { refreshUserMenu } from './auth.js';
 
 // Ajustes visuales puntuales del login.
