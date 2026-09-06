@@ -118,6 +118,112 @@ function initLoginPolish() {
   document.head.appendChild(style);
 }
 
+// Botón de ojo para mostrar/ocultar cualquier campo de contraseña del sistema.
+function initPasswordToggles() {
+  if (!document.getElementById('password-toggle-styles')) {
+    const style = document.createElement('style');
+    style.id = 'password-toggle-styles';
+    style.textContent = `
+      .password-toggle-wrap {
+        position: relative;
+        width: 100%;
+      }
+
+      .password-toggle-wrap > input {
+        width: 100%;
+        padding-right: 46px !important;
+      }
+
+      .password-toggle-btn {
+        position: absolute;
+        top: 50%;
+        right: 8px;
+        transform: translateY(-50%);
+        width: 34px;
+        height: 34px;
+        border: 0;
+        border-radius: 8px;
+        background: transparent;
+        color: var(--texto-sub);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background-color .15s ease, color .15s ease;
+        z-index: 2;
+      }
+
+      .password-toggle-btn:hover,
+      .password-toggle-btn:focus-visible {
+        background: rgba(46, 134, 193, .10);
+        color: var(--azul-mid);
+        outline: none;
+      }
+
+      #s-login .password-toggle-btn {
+        color: rgba(232, 242, 250, .72);
+      }
+
+      #s-login .password-toggle-btn:hover,
+      #s-login .password-toggle-btn:focus-visible {
+        background: rgba(255, 255, 255, .10);
+        color: #fff;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  const eyeOpen = `
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.8"/>
+    </svg>`;
+
+  const eyeClosed = `
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M3 3l18 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      <path d="M10.6 6.2A10.5 10.5 0 0 1 12 6c6.5 0 10 6 10 6a17.2 17.2 0 0 1-3.1 3.8M6.2 6.2C3.5 8 2 12 2 12s3.5 6 10 6c1.7 0 3.1-.4 4.4-1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+    </svg>`;
+
+  const addToggle = (input) => {
+    if (!input || input.dataset.passwordToggleReady === '1') return;
+    input.dataset.passwordToggleReady = '1';
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'password-toggle-wrap';
+    input.parentNode.insertBefore(wrapper, input);
+    wrapper.appendChild(input);
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'password-toggle-btn';
+    button.setAttribute('aria-label', 'Mostrar contraseña');
+    button.setAttribute('title', 'Mostrar contraseña');
+    button.innerHTML = eyeOpen;
+
+    button.addEventListener('click', () => {
+      const showing = input.type === 'text';
+      input.type = showing ? 'password' : 'text';
+      button.innerHTML = showing ? eyeOpen : eyeClosed;
+      const label = showing ? 'Mostrar contraseña' : 'Ocultar contraseña';
+      button.setAttribute('aria-label', label);
+      button.setAttribute('title', label);
+    });
+
+    wrapper.appendChild(button);
+  };
+
+  document.querySelectorAll('input[type="password"]').forEach(addToggle);
+
+  // Si más adelante se crea otro campo de contraseña dinámicamente, también
+  // recibe automáticamente el control sin duplicarlo.
+  const observer = new MutationObserver(() => {
+    document.querySelectorAll('input[type="password"]:not([data-password-toggle-ready="1"])').forEach(addToggle);
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+}
+
 // Setup Dark Mode theme switcher
 function initThemeSwitcher() {
   const toggleBtns = document.querySelectorAll('.theme-toggle-btn');
@@ -183,6 +289,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // 0. Ajustes visuales del login
   initLoginPolish();
+  initPasswordToggles();
   
   // 1. Start Clock
   initClock();
