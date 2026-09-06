@@ -8,7 +8,7 @@ import { initModalsBackdrop } from './modals.js';
 import { initContactsListeners } from './contacts.js';
 import { initHistoryFilters } from './history.js';
 import './dashboard.js';
-import './navigation.js';
+import { restorePrivateScreen } from './navigation.js';
 import './incidents.js';
 import './users.js';
 import { initThresholds } from './thresholds.js';
@@ -21,7 +21,8 @@ import './rnf2.js';
 import './map-fullwidth.js';
 import './mobile-layout.js';
 import './numeric-inputs.js';
-import { refreshUserMenu } from './auth.js';
+import { currentUser, refreshUserMenu } from './auth.js';
+import { apiRequest } from './api.js';
 
 // Ajustes visuales puntuales del login.
 function initLoginPolish() {
@@ -149,8 +150,35 @@ function updateThemeIcons(isDark) {
   });
 }
 
+async function restoreSessionAfterRefresh() {
+  const savedUser = currentUser();
+  const savedToken = localStorage.getItem('sat-token');
+
+  if (!savedUser || !savedToken) {
+    refreshUserMenu();
+    return false;
+  }
+
+  try {
+    // Verifica el token sin cargar dashboard/contactos/historial. Si sigue
+    // vigente, actualiza los datos del usuario y recupera la última pantalla.
+    const data = await apiRequest('/auth/session');
+    if (data.user) {
+      localStorage.setItem('sat-user', JSON.stringify(data.user));
+    }
+    refreshUserMenu();
+    restorePrivateScreen();
+    return true;
+  } catch (error) {
+    // apiRequest ya limpia una sesión realmente vencida y vuelve al login.
+    console.info('No se pudo restaurar la sesión guardada:', error.message);
+    refreshUserMenu();
+    return false;
+  }
+}
+
 // App Initialization
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   console.log('SAT Inundaciones - Initializing application modules...');
 
   // 0. Ajustes visuales del login
@@ -165,21 +193,16 @@ document.addEventListener('DOMContentLoaded', () => {
   // 3. Initialize theme switcher
   initThemeSwitcher();
 
-  // 4. Setup user dropdown
-  refreshUserMenu();
-
-  // 5. Inicializar listeners de Contactos, pero NO consultar la API todavía.
-  // Los datos se cargan recién al entrar a la pantalla con una sesión válida.
+  // 4. Inicializar listeners que no necesitan consultar datos protegidos.
   initContactsListeners();
-
-  // 6. Alertas pendientes, dashboard, contactos e historial se cargan al navegar
-  // a cada pantalla. Evita peticiones protegidas desde el login y elimina la
-  // condición de carrera que podía invalidar una sesión recién iniciada.
-
-  // 7. Initialize History listeners without initial protected request
   initHistoryFilters();
 
-  // 8. Admin threshold configuration
+  // 5. Si existe una sesión guardada, validarla y recuperar la pantalla en la
+  // que estaba el usuario antes de actualizar con F5.
+  await restoreSessionAfterRefresh();
+
+  // 6. Inicializar configuración de umbrales después de validar la sesión para
+  // evitar peticiones protegidas prematuras durante el arranque.
   initThresholds();
   
   console.log('SAT Inundaciones - Application ready.');
