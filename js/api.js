@@ -163,6 +163,9 @@ function loadingMessage(url, method = 'GET') {
 }
 
 function shouldShowLoading(url) {
+  // Las consultas periódicas del mapa se ejecutan en segundo plano. No deben
+  // mostrar el spinner global cada pocos segundos mientras el operador trabaja.
+  if (url.searchParams.get('sat_background') === '1') return false;
   if (url.pathname.endsWith('/api/auth/login')) return true;
 
   const activeScreen = document.querySelector('.screen.active')?.id;
