@@ -197,9 +197,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   initContactsListeners();
   initHistoryFilters();
 
-  // 5. Si existe una sesión guardada, validarla y recuperar la pantalla en la
-  // que estaba el usuario antes de actualizar con F5.
-  await restoreSessionAfterRefresh();
+  // 5. Mientras se valida una sesión guardada, main.css mantiene oculto el
+  // login inicial. Al terminar, se revela solamente la pantalla correcta.
+  try {
+    await restoreSessionAfterRefresh();
+  } finally {
+    document.body.classList.add('sat-session-resolved');
+  }
 
   // 6. Inicializar configuración de umbrales después de validar la sesión para
   // evitar peticiones protegidas prematuras durante el arranque.
