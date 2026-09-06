@@ -165,6 +165,13 @@ class AppHandler(previous.AppHandler):
         if path == "/api/health":
             return super().do_GET()
 
+        # Permite al navegador comprobar, después de un F5, si el token guardado
+        # todavía corresponde a una sesión válida sin cargar datos operativos.
+        if path == "/api/auth/session":
+            if not self._require_session(admin=False):
+                return
+            return self.send_json({"ok": True, "user": self.auth_user})
+
         if path.startswith("/api/"):
             admin_required = path in {"/api/usuarios", "/api/umbrales"}
             if not self._require_session(admin=admin_required):
