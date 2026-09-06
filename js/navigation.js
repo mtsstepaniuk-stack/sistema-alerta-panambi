@@ -9,6 +9,33 @@ function isLoggedIn() {
   return Boolean(currentUser());
 }
 
+function rememberPrivateScreen(id) {
+  if (!isLoggedIn()) return;
+  if (id === 's-login' || id === 's-reporte') return;
+  localStorage.setItem('sat-last-screen', id);
+}
+
+export function restorePrivateScreen() {
+  const user = currentUser();
+  const token = localStorage.getItem('sat-token');
+  if (!user || !token) return false;
+
+  let id = localStorage.getItem('sat-last-screen') || 's-dash';
+
+  // Si la pantalla guardada ya no existe o no pertenece al área privada,
+  // se vuelve de forma segura al dashboard.
+  if (!document.getElementById(id) || id === 's-login' || id === 's-reporte') {
+    id = 's-dash';
+  }
+
+  if (id === 's-usuarios' && !isAdmin(user)) {
+    id = 's-dash';
+  }
+
+  navigate(id);
+  return true;
+}
+
 export function navigate(id) {
   const user = currentUser();
 
@@ -42,6 +69,7 @@ export function navigate(id) {
   });
 
   targetScreen.classList.add('active');
+  rememberPrivateScreen(id);
 
   if (id === 's-dash') {
     setTimeout(() => window.initDashboard?.(), 80);
@@ -99,5 +127,6 @@ export function goLogin() {
 }
 
 window.navigate = navigate;
+window.restorePrivateScreen = restorePrivateScreen;
 window.openPublicReport = openPublicReport;
 window.goLogin = goLogin;
