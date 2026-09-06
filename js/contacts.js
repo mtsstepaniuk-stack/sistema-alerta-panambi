@@ -45,6 +45,13 @@ function ensureContactThemeStyles() {
       color: #1f2d3d !important;
       -webkit-text-fill-color: #1f2d3d !important;
     }
+
+    /* En modo oscuro, el valor de Total contactos debe tener contraste
+       suficiente con el fondo de la tarjeta. */
+    body.dark-theme #s-contactos .kpi-grid > div:first-child .kpi-value {
+      color: #f4f8fc !important;
+      -webkit-text-fill-color: #f4f8fc !important;
+    }
   `;
 
   document.head.appendChild(style);
