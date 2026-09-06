@@ -24,6 +24,25 @@ import './numeric-inputs.js';
 import { currentUser, refreshUserMenu } from './auth.js';
 import { apiRequest } from './api.js';
 
+// Usa el isotipo de SAT Panambí como icono de la pestaña del navegador.
+function initFavicon() {
+  document.querySelectorAll('link[rel="icon"], link[rel="shortcut icon"]').forEach(link => link.remove());
+
+  const favicon = document.createElement('link');
+  favicon.rel = 'icon';
+  favicon.type = 'image/svg+xml';
+  favicon.href = 'assets/sat-panambi-mark.svg?v=20260906-1';
+  document.head.appendChild(favicon);
+
+  const shortcut = document.createElement('link');
+  shortcut.rel = 'shortcut icon';
+  shortcut.href = 'assets/sat-panambi-mark.svg?v=20260906-1';
+  document.head.appendChild(shortcut);
+}
+
+// Se ejecuta cuanto antes para evitar que quede visible el icono genérico.
+initFavicon();
+
 // Ajustes visuales puntuales del login.
 function initLoginPolish() {
   const loginLogo = document.querySelector('#s-login .login-logo');
