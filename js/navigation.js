@@ -3,6 +3,7 @@
  * Controls screen visibility and navigation link active states.
  */
 import { currentUser, isAdmin } from './auth.js';
+import { renderContacts } from './contacts.js';
 
 function isLoggedIn() {
   return Boolean(currentUser());
@@ -52,6 +53,10 @@ export function navigate(id) {
 
   if (id === 's-emit') {
     setTimeout(() => window.resetEmitForm?.(), 0);
+  }
+
+  if (id === 's-contactos') {
+    setTimeout(() => renderContacts(), 80);
   }
 
   if (id === 's-usuarios') {
