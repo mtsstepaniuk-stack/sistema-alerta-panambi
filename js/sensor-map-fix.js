@@ -5,13 +5,14 @@
  * - Alertas: marcadores grandes de color sobre la zona afectada.
  * - Actualización: consulta silenciosa cada pocos segundos mientras el mapa
  *   está visible para reflejar altas y cambios de estado sin recargar la página.
+ * - Una alerta pendiente desaparece del mapa al validarse o rechazarse.
  *
  * Las ubicaciones son aproximadas y forman parte de la simulación académica.
  */
 
 const OSM_TILES_UPSTREAM = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 const LIVE_REFRESH_MS = 8000;
-const ACTIVE_ALERT_STATES = new Set(['Pendiente', 'Validada', 'Emitida']);
+const ACTIVE_ALERT_STATES = new Set(['Pendiente', 'Emitida']);
 const PANAMBI_CENTER = { lat: -27.7235, lng: -54.9172 };
 
 const UPSTREAM_SENSORS = [
@@ -479,7 +480,7 @@ function updateMapRiskBadge(alerts) {
     ? 'SIN ALERTAS ACTIVAS'
     : `${count} ZONA${count === 1 ? '' : 'S'} CON ALERTA`;
   badge.className = `badge ${count > 0 ? 'badge-rojo' : 'badge-verde'}`;
-  badge.title = 'Se actualiza automáticamente con las alertas pendientes, validadas o emitidas.';
+  badge.title = 'Se actualiza automáticamente con las alertas pendientes o emitidas.';
 }
 
 function addBaseLayer(L, map) {
@@ -498,7 +499,7 @@ function addSymbolLegend(L, map) {
       <div class="sat-map-symbol-row"><i class="sat-legend-sensor"></i> Sensor fijo</div>
       <div class="sat-map-symbol-row"><i class="sat-legend-zone"></i> Zona de referencia</div>
       <div class="sat-map-symbol-row"><i class="sat-legend-alert"></i> Alerta activa</div>
-      <div style="margin-top:4px;color:#667;">Las alertas pendientes pulsan.</div>
+      <div style="margin-top:4px;color:#667;">Las pendientes pulsan y desaparecen al validarse.</div>
     `;
     return div;
   };
@@ -747,7 +748,7 @@ async function openUpstreamModal(data = upstreamLastData) {
       </div>
       <div class="sat-upstream-body">
         <div id="sat-upstream-modal-map" class="sat-upstream-modal-map"></div>
-        <div class="sat-upstream-info">Los círculos azules pequeños son sensores simulados y permanecen fijos. Los marcadores grandes de color son alertas activas; las pendientes pulsan y desaparecen del mapa si son rechazadas. El mapa se actualiza automáticamente.</div>
+        <div class="sat-upstream-info">Los círculos azules pequeños son sensores simulados y permanecen fijos. Los marcadores grandes de color son alertas pendientes o emitidas; las pendientes pulsan y desaparecen del mapa cuando se validan o rechazan. El mapa se actualiza automáticamente.</div>
       </div>
     </div>
   `;
