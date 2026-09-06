@@ -37,6 +37,14 @@ body {
   }
 }
 
+/* Mientras se valida una sesión guardada, el login inicial queda oculto.
+   Así un F5 no muestra la pantalla de acceso antes de restaurar la vista privada. */
+body:not(.sat-session-resolved) #s-login.screen.active {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  animation: none !important;
+}
+
 /* Helper hidden utilities */
 .d-none {
   display: none !important;
