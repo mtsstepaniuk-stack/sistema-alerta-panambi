@@ -250,7 +250,9 @@ export async function initDashboard() {
     renderDashboardBanner(data.pendingAlerts, data.recentAlerts || []);
     renderDashboardAlerts(data.recentAlerts || []);
     renderSensors(data.sensores || []);
-    renderRealMap(data.sensores || [], data.zonas || []);
+
+    // El mapa lo administra exclusivamente sensor-map-fix.js. No se toca aquí
+    // el contenedor #real-map para evitar que reaparezca la versión anterior.
 
     const latest = data.latest;
     const kpiValues = document.querySelectorAll('#s-dash .kpi-value');
