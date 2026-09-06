@@ -163,8 +163,6 @@ function loadingMessage(url, method = 'GET') {
 }
 
 function shouldShowLoading(url) {
-  // Al abrir el sitio, varios módulos pueden consultar datos antes del login.
-  // Esas consultas no deben mostrar un loader sobre la pantalla de acceso.
   if (url.pathname.endsWith('/api/auth/login')) return true;
 
   const activeScreen = document.querySelector('.screen.active')?.id;
@@ -286,11 +284,15 @@ function clearExpiredSession() {
 
 export async function apiRequest(path, options = {}) {
   const requestPath = enrichRecipientRequest(path);
-  const token = localStorage.getItem('sat-token');
+
+  // Se guarda el token exacto con el que nació esta petición. Esto evita una
+  // condición de carrera: una petición vieja puede responder 401 después de
+  // que el usuario ya inició sesión y nunca debe borrar la sesión nueva.
+  const requestToken = localStorage.getItem('sat-token') || '';
 
   const headers = {
     'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(requestToken ? { Authorization: `Bearer ${requestToken}` } : {}),
     ...(options.headers || {})
   };
 
@@ -302,8 +304,15 @@ export async function apiRequest(path, options = {}) {
   const data = await response.json().catch(() => ({}));
 
   if (response.status === 401 && requestPath !== '/auth/login') {
-    clearExpiredSession();
-    setTimeout(() => window.navigate?.('s-login'), 0);
+    const currentToken = localStorage.getItem('sat-token') || '';
+
+    // Solo se invalida el navegador si el 401 pertenece a la MISMA sesión
+    // que sigue activa. Un 401 de una petición anterior o sin token se ignora
+    // para no expulsar al usuario que acaba de iniciar sesión.
+    if (requestToken && currentToken === requestToken) {
+      clearExpiredSession();
+      setTimeout(() => window.navigate?.('s-login'), 0);
+    }
   }
 
   if (!response.ok || data.ok === false) {
