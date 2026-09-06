@@ -5,14 +5,14 @@
 
 import { initClock } from './clock.js';
 import { initModalsBackdrop } from './modals.js';
-import { initContactsListeners, renderContacts } from './contacts.js';
-import { initHistoryFilters, renderHistory } from './history.js';
-import { initDashboard } from './dashboard.js';
+import { initContactsListeners } from './contacts.js';
+import { initHistoryFilters } from './history.js';
+import './dashboard.js';
 import './navigation.js';
 import './incidents.js';
 import './users.js';
 import { initThresholds } from './thresholds.js';
-import { renderPendingAlert } from './alerts.js';
+import './alerts.js';
 import './manual-alert-rf8.js';
 import './final-rfs.js';
 import './rf14-pending-fix.js?v=20260901-3';
@@ -168,22 +168,18 @@ document.addEventListener('DOMContentLoaded', () => {
   // 4. Setup user dropdown
   refreshUserMenu();
 
-  // 5. Load dashboard data from backend
-  initDashboard();
-
-  // 6. Initialize Contacts listeners & initial render
+  // 5. Inicializar listeners de Contactos, pero NO consultar la API todavía.
+  // Los datos se cargan recién al entrar a la pantalla con una sesión válida.
   initContactsListeners();
-  renderContacts();
 
-  // 7. Alertas pendientes se cargan recién al entrar a la pantalla de validación.
-  // Evita mostrar un falso "Sesión inválida o vencida" mientras el usuario
-  // todavía está en el login o existe un token viejo después de un redeploy.
+  // 6. Alertas pendientes, dashboard, contactos e historial se cargan al navegar
+  // a cada pantalla. Evita peticiones protegidas desde el login y elimina la
+  // condición de carrera que podía invalidar una sesión recién iniciada.
 
-  // 8. Initialize History listeners & initial render
+  // 7. Initialize History listeners without initial protected request
   initHistoryFilters();
-  renderHistory();
 
-  // 9. Admin threshold configuration
+  // 8. Admin threshold configuration
   initThresholds();
   
   console.log('SAT Inundaciones - Application ready.');
