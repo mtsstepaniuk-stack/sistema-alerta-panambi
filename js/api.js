@@ -217,10 +217,9 @@ function endLoading() {
   }, remaining);
 }
 
-// Algunos módulos antiguos del mapa usan fetch() directamente en lugar de
-// apiRequest(). Se protege fetch antes de cargarlos para que toda llamada
-// interna a /api incluya la sesión actual automáticamente. Además, este
-// punto central permite mostrar la animación de carga en todo el sistema.
+// Algunos módulos usan fetch() directamente en lugar de apiRequest().
+// Se protege fetch para que toda llamada interna a /api incluya la sesión
+// actual y para centralizar el indicador global de carga.
 if (!window.__satAuthFetchInstalled) {
   const originalFetch = window.fetch.bind(window);
 
@@ -260,10 +259,10 @@ if (!window.__satAuthFetchInstalled) {
   window.__satAuthFetchInstalled = true;
 }
 
-// Se cargan después del puente de autenticación para que sus fetch directos
-// queden protegidos desde el primer render.
-import('./real-map.js');
-import('./sensor-map-fix.js');
+// El mapa operativo tiene una única implementación. La versión anterior
+// (real-map.js) ya no se carga porque competía por el mismo contenedor y
+// provocaba el parpadeo del mapa viejo al iniciar o actualizar la página.
+import('./sensor-map-fix.js?v=20260906-2');
 import('./arrival-estimate.js');
 
 function enrichRecipientRequest(path) {
