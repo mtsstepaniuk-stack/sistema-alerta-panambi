@@ -37,8 +37,8 @@ function injectStyles() {
     .sat-user-menu-item.sat-password-locked::after {
       content: attr(data-admin-lock-tooltip);
       position: absolute;
-      right: 8px;
-      bottom: calc(100% + 5px);
+      right: calc(100% + 7px);
+      top: 50%;
       z-index: 10;
       max-width: 190px;
       padding: 5px 7px;
@@ -53,7 +53,7 @@ function injectStyles() {
       white-space: nowrap;
       opacity: 0;
       visibility: hidden;
-      transform: translateY(3px);
+      transform: translate(3px, -50%);
       transition: opacity .12s ease, transform .12s ease, visibility .12s ease;
       pointer-events: none;
     }
@@ -62,7 +62,7 @@ function injectStyles() {
     .sat-user-menu-item.sat-password-locked:focus-visible::after {
       opacity: 1;
       visibility: visible;
-      transform: translateY(0);
+      transform: translate(0, -50%);
     }
   `;
   document.head.appendChild(style);
@@ -78,11 +78,9 @@ function applyLock() {
     if (locked) {
       button.setAttribute('aria-disabled', 'true');
       button.setAttribute('data-admin-lock-tooltip', TOOLTIP_TEXT);
-      button.setAttribute('title', TOOLTIP_TEXT);
     } else {
       button.removeAttribute('aria-disabled');
       button.removeAttribute('data-admin-lock-tooltip');
-      button.removeAttribute('title');
     }
   });
 }
