@@ -109,4 +109,4 @@ window.addEventListener('storage', applyLock);
 import('./user-management-edit.js?v=20260907-1');
 
 // Visor interno de imágenes de reportes vecinales: evita abrir pestañas nuevas.
-import('./attachment-viewer.js?v=20260907-1');
+import('./attachment-viewer.js?v=20260907-2');
