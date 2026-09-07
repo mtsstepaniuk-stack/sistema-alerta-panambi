@@ -104,3 +104,6 @@ if (document.readyState === 'loading') {
 const observer = new MutationObserver(() => applyLock());
 observer.observe(document.documentElement, { childList: true, subtree: true });
 window.addEventListener('storage', applyLock);
+
+// Extensión de administración: edición completa de cuentas registradas.
+import('./user-management-edit.js?v=20260907-1');
