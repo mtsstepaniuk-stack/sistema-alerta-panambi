@@ -242,6 +242,8 @@ if (!document.getElementById(styleId)) {
       display: block !important;
       overflow: hidden !important;
       position: relative !important;
+      z-index: 0 !important;
+      isolation: isolate;
     }
 
     #s-dash #real-map .sat-leaflet-map,
