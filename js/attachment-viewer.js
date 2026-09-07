@@ -4,6 +4,8 @@
  * con el mismo lenguaje visual que la ampliación del mapa.
  */
 
+import { showToast } from './modals.js';
+
 const VIEWER_ID = 'sat-attachment-viewer';
 const STYLE_ID = 'sat-attachment-viewer-styles';
 
@@ -230,7 +232,7 @@ function closeAttachmentViewer() {
 
 function openAttachmentViewer(path) {
   if (!path) {
-    window.showToast?.('El reporte no tiene archivo adjunto.', true);
+    showToast('El reporte no tiene archivo adjunto.', true);
     return;
   }
 
@@ -271,7 +273,18 @@ document.addEventListener('keydown', event => {
   }
 });
 
-// Los botones existentes de alertas llaman esta función global al momento del clic.
-// La sobrescribimos para conservar la interfaz actual sin abrir otra pestaña.
-window.viewIncidentAttachment = openAttachmentViewer;
-window.closeIncidentAttachment = closeAttachmentViewer;
+function installAttachmentViewerOverride() {
+  window.viewIncidentAttachment = openAttachmentViewer;
+  window.closeIncidentAttachment = closeAttachmentViewer;
+}
+
+// alerts.js define originalmente esta función para abrir una pestaña nueva.
+// Reaplicamos el override después de la evaluación de módulos para que el visor
+// interno sea siempre la implementación final, independientemente del orden de carga.
+installAttachmentViewerOverride();
+queueMicrotask(installAttachmentViewerOverride);
+[0, 100, 500].forEach(delay => setTimeout(installAttachmentViewerOverride, delay));
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', installAttachmentViewerOverride, { once: true });
+}
