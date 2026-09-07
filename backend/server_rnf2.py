@@ -35,6 +35,13 @@ def init_db():
             """
         )
 
+        # Para la demostración académica, la cuenta principal conserva una
+        # credencial predecible: su clave se mantiene igual a su usuario.
+        conn.execute(
+            "UPDATE usuarios SET password = usuario WHERE usuario = ?",
+            ("admin",),
+        )
+
 
 def _precision_status():
     with base.get_conn() as conn:
