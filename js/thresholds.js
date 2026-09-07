@@ -1,7 +1,7 @@
 /**
  * RF2 + RF18: configuración incremental de umbrales de riesgo.
- * Se inserta dentro de la pantalla de administración ya existente para evitar
- * modificar la estructura general del prototipo estable.
+ * Los umbrales forman parte de la configuración técnica del monitoreo, por eso
+ * se muestran dentro de la pantalla de Sensores y Puntos de Monitoreo.
  */
 import { apiRequest } from './api.js';
 import { currentUser, isAdmin } from './auth.js';
@@ -44,12 +44,24 @@ function thresholdCard() {
   `;
 }
 
+function removeThresholdCard() {
+  document.getElementById('threshold-config-card')?.remove();
+}
+
 function ensureThresholdCard() {
+  if (!isAdmin()) {
+    removeThresholdCard();
+    return false;
+  }
+
   if (document.getElementById('threshold-config-card')) return true;
-  const content = document.querySelector('#s-usuarios .content');
-  if (!content || !isAdmin()) return false;
+
+  const content = document.querySelector('#s-sensores .content');
+  if (!content) return false;
+
   const header = content.querySelector('.page-header');
   if (!header) return false;
+
   header.insertAdjacentHTML('afterend', thresholdCard());
   document.getElementById('threshold-save-btn')?.addEventListener('click', saveThresholds);
   return true;
@@ -124,7 +136,10 @@ export async function saveThresholds() {
 }
 
 function activateForCurrentRole() {
-  if (!isAdmin()) return;
+  if (!isAdmin()) {
+    removeThresholdCard();
+    return;
+  }
   ensureThresholdCard();
   renderThresholds();
 }
@@ -141,7 +156,7 @@ export function initThresholds() {
       const hasAdminRole = document.body.classList.contains('admin-role');
       if (hasAdminRole === lastAdminRole) return;
       lastAdminRole = hasAdminRole;
-      if (hasAdminRole) activateForCurrentRole();
+      activateForCurrentRole();
     });
     roleObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
   }
