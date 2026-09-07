@@ -98,6 +98,115 @@ if (!document.getElementById(styleId)) {
     .leaflet-right .leaflet-control { margin-right: 10px; }
 
     /*
+     * Tooltip al pasar el mouse. Se fuerza una tarjeta clara y compacta para
+     * que el modo oscuro de la aplicación no deje texto blanco sin fondo.
+     */
+    #s-dash .leaflet-tooltip,
+    .sat-upstream-modal .leaflet-tooltip {
+      background: rgba(255, 255, 255, .98) !important;
+      color: #213547 !important;
+      border: 1px solid #d6e0e8 !important;
+      border-radius: 7px !important;
+      box-shadow: 0 4px 14px rgba(18, 38, 58, .22) !important;
+      padding: 7px 9px !important;
+      font-family: 'Inter', Arial, sans-serif !important;
+      font-size: 11px !important;
+      font-weight: 700 !important;
+      line-height: 1.35 !important;
+      letter-spacing: 0 !important;
+      text-shadow: none !important;
+      white-space: nowrap !important;
+    }
+
+    #s-dash .leaflet-tooltip-top::before,
+    .sat-upstream-modal .leaflet-tooltip-top::before {
+      border-top-color: rgba(255, 255, 255, .98) !important;
+    }
+    #s-dash .leaflet-tooltip-bottom::before,
+    .sat-upstream-modal .leaflet-tooltip-bottom::before {
+      border-bottom-color: rgba(255, 255, 255, .98) !important;
+    }
+    #s-dash .leaflet-tooltip-left::before,
+    .sat-upstream-modal .leaflet-tooltip-left::before {
+      border-left-color: rgba(255, 255, 255, .98) !important;
+    }
+    #s-dash .leaflet-tooltip-right::before,
+    .sat-upstream-modal .leaflet-tooltip-right::before {
+      border-right-color: rgba(255, 255, 255, .98) !important;
+    }
+
+    /*
+     * Popup al hacer clic. Igual que el tooltip, queda aislado del tema global
+     * y usa texto oscuro sobre fondo blanco para máxima legibilidad encima del mapa.
+     */
+    #s-dash .leaflet-popup-content-wrapper,
+    .sat-upstream-modal .leaflet-popup-content-wrapper {
+      background: #ffffff !important;
+      color: #213547 !important;
+      border: 1px solid #d6e0e8 !important;
+      border-radius: 12px !important;
+      box-shadow: 0 10px 28px rgba(18, 38, 58, .28) !important;
+    }
+
+    #s-dash .leaflet-popup-content,
+    .sat-upstream-modal .leaflet-popup-content {
+      margin: 13px 16px !important;
+      color: #213547 !important;
+      font-family: 'Inter', Arial, sans-serif !important;
+      font-size: 12px !important;
+      font-weight: 500 !important;
+      line-height: 1.45 !important;
+      letter-spacing: 0 !important;
+      text-shadow: none !important;
+    }
+
+    #s-dash .leaflet-popup-content *,
+    .sat-upstream-modal .leaflet-popup-content * {
+      text-shadow: none !important;
+    }
+
+    #s-dash .leaflet-popup-content b,
+    #s-dash .leaflet-popup-content strong,
+    .sat-upstream-modal .leaflet-popup-content b,
+    .sat-upstream-modal .leaflet-popup-content strong {
+      color: #172b3d !important;
+      font-weight: 800 !important;
+    }
+
+    #s-dash .leaflet-popup-tip,
+    .sat-upstream-modal .leaflet-popup-tip {
+      background: #ffffff !important;
+      box-shadow: 3px 3px 8px rgba(18, 38, 58, .12) !important;
+    }
+
+    #s-dash .leaflet-popup-close-button,
+    .sat-upstream-modal .leaflet-popup-close-button {
+      color: #667788 !important;
+      font-size: 20px !important;
+      font-weight: 700 !important;
+      text-shadow: none !important;
+    }
+
+    #s-dash .leaflet-popup-close-button:hover,
+    .sat-upstream-modal .leaflet-popup-close-button:hover {
+      color: #1f5fa8 !important;
+    }
+
+    #s-dash .sat-live-alert-popup,
+    #s-dash .sat-upstream-popup,
+    .sat-upstream-modal .sat-live-alert-popup,
+    .sat-upstream-modal .sat-upstream-popup {
+      color: #213547 !important;
+      font-size: 12px !important;
+      line-height: 1.45 !important;
+    }
+
+    #s-dash .sat-live-alert-popup .sat-alert-detail,
+    .sat-upstream-modal .sat-live-alert-popup .sat-alert-detail {
+      color: #52606d !important;
+    }
+
+    /*
      * Leaflet contiene elementos posicionados y mosaicos con dimensiones
      * propias. En un CSS Grid, la columna flexible debe poder encogerse a 0;
      * de lo contrario puede crecer por su contenido y empujar .dash-right.
