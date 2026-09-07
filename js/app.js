@@ -18,7 +18,7 @@ import './final-rfs.js';
 import './rf14-pending-fix.js?v=20260901-3';
 import './rnf1.js';
 import './rnf2.js';
-import './map-fullwidth.js?v=20260906-4';
+import './map-fullwidth.js?v=20260907-1';
 import './mobile-layout.js';
 import './numeric-inputs.js';
 import { currentUser, refreshUserMenu } from './auth.js';
