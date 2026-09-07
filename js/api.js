@@ -259,9 +259,7 @@ if (!window.__satAuthFetchInstalled) {
   window.__satAuthFetchInstalled = true;
 }
 
-// El mapa operativo tiene una única implementación. La versión anterior
-// (real-map.js) ya no se carga porque competía por el mismo contenedor y
-// provocaba el parpadeo del mapa viejo al iniciar o actualizar la página.
+// Complementos que dependen del puente de autenticación instalado arriba.
 import('./sensor-map-fix.js?v=20260906-2');
 import('./arrival-estimate.js');
 
