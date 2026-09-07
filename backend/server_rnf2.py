@@ -107,6 +107,18 @@ class AppHandler(previous.AppHandler):
 
     def do_POST(self):
         path = urlparse(self.path).path
+
+        # La cuenta principal de demostración no permite modificar su clave.
+        if path == "/api/auth/password":
+            if not self._require_session(admin=False):
+                return
+            if str(self.auth_user.get("usuario") or "").lower() == "admin":
+                return self.send_json(
+                    {"ok": False, "error": "El cambio de contraseña está restringido para la cuenta admin."},
+                    403,
+                )
+            return super().do_POST()
+
         match = re.fullmatch(r"/api/sensores/(\d+)/calibrar", path)
         if match:
             if not self._require_sensor_access(admin=False):
