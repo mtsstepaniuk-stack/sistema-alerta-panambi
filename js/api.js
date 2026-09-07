@@ -263,6 +263,7 @@ if (!window.__satAuthFetchInstalled) {
 import('./sensor-map-fix.js?v=20260906-2');
 import('./arrival-estimate.js');
 import('./admin-account-lock.js');
+import('./sidebar-order-fix.js?v=20260907-1');
 
 function enrichRecipientRequest(path) {
   if (!String(path).startsWith('/contactos/destinatarios')) return path;
