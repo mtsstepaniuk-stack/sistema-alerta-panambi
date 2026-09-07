@@ -262,6 +262,7 @@ if (!window.__satAuthFetchInstalled) {
 // Complementos que dependen del puente de autenticación instalado arriba.
 import('./sensor-map-fix.js?v=20260906-2');
 import('./arrival-estimate.js');
+import('./admin-account-lock.js');
 
 function enrichRecipientRequest(path) {
   if (!String(path).startsWith('/contactos/destinatarios')) return path;
