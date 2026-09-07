@@ -1,6 +1,7 @@
 // Ajustes de layout del mapa y del dashboard principal.
 // Mantiene la columna derecha visible, agrega un fallback estructural de
-// Leaflet y corrige la deformación horizontal de los textos del gráfico SVG.
+// Leaflet, corrige la deformación horizontal del gráfico y evita que los
+// popups recientes del mapa desplacen la vista al abrirse.
 const styleId = 'sat-map-fullwidth-style';
 
 if (!document.getElementById(styleId)) {
@@ -97,10 +98,7 @@ if (!document.getElementById(styleId)) {
     .leaflet-left .leaflet-control { margin-left: 10px; }
     .leaflet-right .leaflet-control { margin-right: 10px; }
 
-    /*
-     * Tooltip al pasar el mouse. Se fuerza una tarjeta clara y compacta para
-     * que el modo oscuro de la aplicación no deje texto blanco sin fondo.
-     */
+    /* Tooltip compacto al pasar el mouse. */
     #s-dash .leaflet-tooltip,
     .sat-upstream-modal .leaflet-tooltip {
       background: rgba(255, 255, 255, .98) !important;
@@ -135,10 +133,7 @@ if (!document.getElementById(styleId)) {
       border-right-color: rgba(255, 255, 255, .98) !important;
     }
 
-    /*
-     * Popup al hacer clic. Igual que el tooltip, queda aislado del tema global
-     * y usa texto oscuro sobre fondo blanco para máxima legibilidad encima del mapa.
-     */
+    /* Popup al hacer clic: más chico para el mapa embebido. */
     #s-dash .leaflet-popup-content-wrapper,
     .sat-upstream-modal .leaflet-popup-content-wrapper {
       background: #ffffff !important;
@@ -150,12 +145,12 @@ if (!document.getElementById(styleId)) {
 
     #s-dash .leaflet-popup-content,
     .sat-upstream-modal .leaflet-popup-content {
-      margin: 13px 16px !important;
+      margin: 11px 14px !important;
       color: #213547 !important;
       font-family: 'Inter', Arial, sans-serif !important;
-      font-size: 12px !important;
+      font-size: 11px !important;
       font-weight: 500 !important;
-      line-height: 1.45 !important;
+      line-height: 1.4 !important;
       letter-spacing: 0 !important;
       text-shadow: none !important;
     }
@@ -197,13 +192,26 @@ if (!document.getElementById(styleId)) {
     .sat-upstream-modal .sat-live-alert-popup,
     .sat-upstream-modal .sat-upstream-popup {
       color: #213547 !important;
-      font-size: 12px !important;
-      line-height: 1.45 !important;
+      font-size: 11px !important;
+      line-height: 1.4 !important;
+    }
+
+    #s-dash .sat-live-alert-popup,
+    .sat-upstream-modal .sat-live-alert-popup {
+      min-width: 205px !important;
+      max-width: 250px !important;
+    }
+
+    #s-dash .sat-live-alert-popup .sat-alert-title,
+    .sat-upstream-modal .sat-live-alert-popup .sat-alert-title {
+      font-size: 13px !important;
+      margin-bottom: 6px !important;
     }
 
     #s-dash .sat-live-alert-popup .sat-alert-detail,
     .sat-upstream-modal .sat-live-alert-popup .sat-alert-detail {
       color: #52606d !important;
+      font-size: 10.5px !important;
     }
 
     /*
@@ -281,6 +289,24 @@ let lastMapHeight = 0;
 let chartResizeObserver = null;
 let observedChart = null;
 
+/*
+ * Leaflet por defecto mueve el mapa para intentar mantener el popup completo
+ * dentro del viewport. En el mapa pequeño eso termina tapando la propia alerta.
+ * Se desactiva el auto-pan globalmente: abrir una alerta ya no cambia centro ni zoom.
+ */
+function disableLeafletPopupAutoPan() {
+  const L = window.L;
+  if (!L?.Popup?.prototype?.options) return false;
+  L.Popup.prototype.options.autoPan = false;
+  L.Popup.prototype.options.keepInView = false;
+  return true;
+}
+
+function ensurePopupBehavior() {
+  if (disableLeafletPopupAutoPan()) return;
+  [60, 180, 500, 1200].forEach(delay => setTimeout(disableLeafletPopupAutoPan, delay));
+}
+
 function normalizeChartText() {
   const svg = document.querySelector('#s-dash .chart-svg');
   if (!svg) return;
@@ -346,6 +372,7 @@ function observeMapSize() {
 }
 
 function initDashboardVisualFixes() {
+  ensurePopupBehavior();
   observeMapSize();
   observeChartSize();
   [50, 180, 500, 1100].forEach(delay => setTimeout(() => {
@@ -361,6 +388,7 @@ if (document.readyState === 'loading') {
 }
 
 window.addEventListener('sat:navigate', () => {
+  ensurePopupBehavior();
   observeMapSize();
   observeChartSize();
   [60, 220, 600].forEach(delay => setTimeout(notifyMapResize, delay));
