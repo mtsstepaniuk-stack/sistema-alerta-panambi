@@ -77,6 +77,25 @@ def _session_user(token):
     return dict(row) if row else None
 
 
+def _revoke_session(token):
+    if not token:
+        return
+    with _sessions_lock:
+        _sessions.pop(token, None)
+
+
+def _revoke_other_sessions(user_id, keep_token=""):
+    """Al cambiar la contraseña conserva la sesión actual y cierra las demás."""
+    with _sessions_lock:
+        tokens = [
+            token
+            for token, session in _sessions.items()
+            if int(session.get("user_id") or 0) == int(user_id) and token != keep_token
+        ]
+        for token in tokens:
+            _sessions.pop(token, None)
+
+
 class AppHandler(previous.AppHandler):
     auth_user = None
 
@@ -145,6 +164,70 @@ class AppHandler(previous.AppHandler):
         except Exception as exc:
             return self.send_json({"ok": False, "error": str(exc)}, 500)
 
+    def _change_password(self):
+        if not self._require_session(admin=False):
+            return
+
+        try:
+            data = self.read_json()
+            current_password = str(data.get("current_password") or "")
+            new_password = str(data.get("new_password") or "")
+
+            if not current_password or not new_password:
+                return self.send_json(
+                    {"ok": False, "error": "Debe ingresar la contraseña actual y la nueva."},
+                    400,
+                )
+            if len(new_password) < 4:
+                return self.send_json(
+                    {"ok": False, "error": "La nueva contraseña debe tener al menos 4 caracteres."},
+                    400,
+                )
+            if new_password == current_password:
+                return self.send_json(
+                    {"ok": False, "error": "La nueva contraseña debe ser distinta de la actual."},
+                    400,
+                )
+
+            user_id = int(self.auth_user["id"])
+            with base.get_conn() as conn:
+                row = conn.execute(
+                    "SELECT password, nombre, usuario FROM usuarios WHERE id = ? AND activo = 1",
+                    (user_id,),
+                ).fetchone()
+                if not row:
+                    return self.send_json({"ok": False, "error": "Usuario no encontrado."}, 404)
+                if str(row["password"]) != current_password:
+                    return self.send_json(
+                        {"ok": False, "error": "La contraseña actual es incorrecta."},
+                        400,
+                    )
+
+                conn.execute(
+                    "UPDATE usuarios SET password = ? WHERE id = ?",
+                    (new_password, user_id),
+                )
+                base.insert_history(
+                    conn,
+                    "Seguridad",
+                    f"Contraseña actualizada — {row['nombre']}",
+                    f"Cuenta: {row['usuario']} · Cambio realizado por el propio usuario",
+                    badge="SEGURIDAD",
+                    zona="Sistema",
+                    riesgo="Verde",
+                )
+
+            current_token = self._bearer_token()
+            _revoke_other_sessions(user_id, keep_token=current_token)
+            return self.send_json(
+                {
+                    "ok": True,
+                    "message": "Contraseña actualizada correctamente.",
+                }
+            )
+        except Exception as exc:
+            return self.send_json({"ok": False, "error": str(exc)}, 500)
+
     def read_json(self):
         data = super().read_json()
         path = urlparse(self.path).path
@@ -184,6 +267,16 @@ class AppHandler(previous.AppHandler):
 
         if path == "/api/auth/login":
             return self._login()
+
+        if path == "/api/auth/logout":
+            # El cierre local debe funcionar aun si la sesión ya venció; si el
+            # token todavía existe, se elimina del servidor inmediatamente.
+            _revoke_session(self._bearer_token())
+            self.auth_user = None
+            return self.send_json({"ok": True})
+
+        if path == "/api/auth/password":
+            return self._change_password()
 
         # RF13: el vecino puede reportar una incidencia sin ser operador del sistema.
         if path == "/api/incidencias":
