@@ -163,8 +163,6 @@ function loadingMessage(url, method = 'GET') {
 }
 
 function shouldShowLoading(url) {
-  // Las consultas periódicas del mapa se ejecutan en segundo plano. No deben
-  // mostrar el spinner global cada pocos segundos mientras el operador trabaja.
   if (url.searchParams.get('sat_background') === '1') return false;
   if (url.pathname.endsWith('/api/auth/login')) return true;
 
@@ -217,9 +215,6 @@ function endLoading() {
   }, remaining);
 }
 
-// Algunos módulos usan fetch() directamente en lugar de apiRequest().
-// Se protege fetch para que toda llamada interna a /api incluya la sesión
-// actual y para centralizar el indicador global de carga.
 if (!window.__satAuthFetchInstalled) {
   const originalFetch = window.fetch.bind(window);
 
@@ -259,11 +254,10 @@ if (!window.__satAuthFetchInstalled) {
   window.__satAuthFetchInstalled = true;
 }
 
-// Complementos que dependen del puente de autenticación instalado arriba.
 import('./sensor-map-fix.js?v=20260906-2');
 import('./arrival-estimate.js');
 import('./admin-account-lock.js');
-import('./sidebar-order-fix.js?v=20260907-1');
+import('./sidebar-order-fix.js?v=20260907-2');
 
 function enrichRecipientRequest(path) {
   if (!String(path).startsWith('/contactos/destinatarios')) return path;
@@ -286,10 +280,6 @@ function clearExpiredSession() {
 
 export async function apiRequest(path, options = {}) {
   const requestPath = enrichRecipientRequest(path);
-
-  // Se guarda el token exacto con el que nació esta petición. Esto evita una
-  // condición de carrera: una petición vieja puede responder 401 después de
-  // que el usuario ya inició sesión y nunca debe borrar la sesión nueva.
   const requestToken = localStorage.getItem('sat-token') || '';
 
   const headers = {
@@ -307,10 +297,6 @@ export async function apiRequest(path, options = {}) {
 
   if (response.status === 401 && requestPath !== '/auth/login') {
     const currentToken = localStorage.getItem('sat-token') || '';
-
-    // Solo se invalida el navegador si el 401 pertenece a la MISMA sesión
-    // que sigue activa. Un 401 de una petición anterior o sin token se ignora
-    // para no expulsar al usuario que acaba de iniciar sesión.
     if (requestToken && currentToken === requestToken) {
       clearExpiredSession();
       setTimeout(() => window.navigate?.('s-login'), 0);
