@@ -114,8 +114,8 @@ import('./attachment-viewer.js?v=20260907-2');
 // Formato y límite de teléfonos en Gestión de Contactos.
 import('./contact-phone-format.js?v=20260907-1');
 
-// Atajos de interfaz: Enter en login, logo al panel e indicador de alerta a validación.
-import('./ui-shortcuts.js?v=20260907-2');
+// Atajos de interfaz: Enter en login y logo al Panel Principal.
+import('./ui-shortcuts.js?v=20260907-3');
 
 // Finalización de alertas manuales desde mapa e Historial.
 import('./alert-finalization.js?v=20260907-2');
