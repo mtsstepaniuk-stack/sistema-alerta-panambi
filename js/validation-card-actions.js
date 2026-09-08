@@ -39,6 +39,27 @@ function installStyles() {
         padding .16s ease;
     }
 
+    /* Un poco más de jerarquía visual en los dos primeros renglones. */
+    #s-validar .validation-alert-card .alert-item-title {
+      font-size: 15px !important;
+      font-weight: 800 !important;
+      line-height: 1.3;
+    }
+
+    #s-validar .validation-alert-card .alert-item-desc {
+      margin-top: 4px;
+      font-size: 13px !important;
+      line-height: 1.45;
+    }
+
+    /* El estado PENDIENTE también debe leerse de un vistazo. */
+    #s-validar .validation-alert-card > div .badge {
+      font-size: 11.5px !important;
+      font-weight: 800 !important;
+      padding: 5px 10px !important;
+      letter-spacing: .02em;
+    }
+
     #s-validar .validation-alert-card:hover:not(.active) {
       transform: translateY(-1px);
       box-shadow: 0 5px 14px rgba(0,0,0,.08);
@@ -71,24 +92,6 @@ function installStyles() {
     #s-validar .validation-alert-card.active.verde {
       background: rgba(39,174,96,.12) !important;
       border-color: #27AE60 !important;
-    }
-
-    #s-validar .sat-validation-selected-label {
-      position: absolute;
-      top: 11px;
-      right: 14px;
-      padding: 4px 8px;
-      border-radius: 999px;
-      background: rgba(46,134,193,.14);
-      color: var(--azul-mid);
-      font-size: 9px;
-      font-weight: 800;
-      letter-spacing: .04em;
-      text-transform: uppercase;
-    }
-
-    #s-validar .validation-alert-card.active .alert-item-top {
-      padding-right: 88px;
     }
 
     #s-validar .sat-card-validation-actions {
@@ -155,16 +158,6 @@ function installStyles() {
       #s-validar .validation-alert-card.active {
         transform: none;
         padding: 15px !important;
-      }
-
-      #s-validar .sat-validation-selected-label {
-        position: static;
-        display: inline-flex;
-        margin-bottom: 8px;
-      }
-
-      #s-validar .validation-alert-card.active .alert-item-top {
-        padding-right: 0;
       }
 
       #s-validar .sat-card-action-row .btn {
@@ -254,17 +247,10 @@ function enhanceCards() {
     card.setAttribute('aria-selected', card.classList.contains('active') ? 'true' : 'false');
     buildActions(card);
 
-    const oldLabel = card.querySelector('.sat-validation-selected-label');
-    if (card.classList.contains('active')) {
-      if (!oldLabel) {
-        const label = document.createElement('span');
-        label.className = 'sat-validation-selected-label';
-        label.textContent = 'Seleccionada';
-        card.prepend(label);
-      }
-    } else {
-      oldLabel?.remove();
-    }
+    // Limpieza por compatibilidad con la versión anterior: ya no mostramos
+    // el cartel "Seleccionada" porque el fondo, borde y expansión ya indican
+    // claramente cuál alerta está activa.
+    card.querySelector('.sat-validation-selected-label')?.remove();
   });
 }
 
