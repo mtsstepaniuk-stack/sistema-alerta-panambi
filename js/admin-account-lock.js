@@ -118,7 +118,10 @@ import('./contact-phone-format.js?v=20260907-1');
 import('./ui-shortcuts.js?v=20260907-1');
 
 // Finalización de alertas manuales desde mapa e Historial.
-import('./alert-finalization.js?v=20260907-1');
+import('./alert-finalization.js?v=20260907-2');
 
 // Corrige el horario visible del mapa para que coincida con Argentina.
 import('./map-time-fix.js?v=20260907-1');
+
+// Corrige la hora de las alertas y reportes visibles en la pantalla de validación.
+import('./validation-time-fix.js?v=20260907-1');
