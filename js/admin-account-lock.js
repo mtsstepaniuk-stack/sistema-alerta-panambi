@@ -119,3 +119,6 @@ import('./ui-shortcuts.js?v=20260907-1');
 
 // Finalización de alertas manuales desde mapa e Historial.
 import('./alert-finalization.js?v=20260907-1');
+
+// Corrige el horario visible del mapa para que coincida con Argentina.
+import('./map-time-fix.js?v=20260907-1');
