@@ -1,7 +1,7 @@
 /*
- * Corrige los horarios de la pantalla Validar Alerta.
- * alerts.js histórico presenta timestamps SQLite UTC como si fueran hora local;
- * este módulo convierte esos textos visibles a America/Argentina/Buenos_Aires.
+ * Ajustes visibles de consistencia para la entrega de testing:
+ * - horarios de Validar Alerta en hora Argentina;
+ * - etiqueta de variación del nivel acorde a mediciones cada 5 minutos.
  */
 
 import { ARGENTINA_TIME_ZONE } from './argentina-time.js';
@@ -44,7 +44,14 @@ function fixElement(element) {
   element.dataset.satArgentinaValidationTime = '1';
 }
 
-function applyValidationTimeFix() {
+function fixMeasurementLabel() {
+  const delta = document.querySelector('#s-dash .kpi-card .kpi-delta');
+  if (!delta) return;
+  const text = String(delta.textContent || '');
+  if (text.includes('en 1h')) delta.textContent = text.replace('en 1h', 'en 5 min');
+}
+
+function applyConsistencyFixes() {
   document.querySelectorAll('#s-validar .validation-alert-card .alert-item-time').forEach(fixElement);
 
   document.querySelectorAll('#s-validar .incident-detail-box').forEach(box => {
@@ -52,12 +59,14 @@ function applyValidationTimeFix() {
     if (String(label?.textContent || '').trim().toLowerCase() !== 'fecha y hora') return;
     fixElement(box.querySelector('.incident-detail-value'));
   });
+
+  fixMeasurementLabel();
 }
 
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', applyValidationTimeFix, { once: true });
+  document.addEventListener('DOMContentLoaded', applyConsistencyFixes, { once: true });
 } else {
-  applyValidationTimeFix();
+  applyConsistencyFixes();
 }
 
 let scheduled = false;
@@ -66,9 +75,9 @@ const observer = new MutationObserver(mutations => {
   scheduled = true;
   queueMicrotask(() => {
     scheduled = false;
-    applyValidationTimeFix();
+    applyConsistencyFixes();
   });
 });
 observer.observe(document.documentElement, { childList: true, subtree: true });
 
-window.addEventListener('sat:navigate', applyValidationTimeFix);
+window.addEventListener('sat:navigate', applyConsistencyFixes);
