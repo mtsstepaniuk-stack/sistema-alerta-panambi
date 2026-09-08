@@ -128,3 +128,6 @@ import('./validation-time-fix.js?v=20260907-1');
 
 // La lista de Validar Alerta pasa a ser compacta: selección visual y acciones dentro de la tarjeta.
 import('./validation-card-actions.js?v=20260908-2');
+
+// Exportación real del Historial: descarga todos los eventos que coinciden con los filtros actuales.
+import('./history-export.js?v=20260908-1');
