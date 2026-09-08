@@ -106,20 +106,24 @@ function ensureActionsSummary(summaryGrid) {
   return card;
 }
 
+function summaryCardByTitle(summaryGrid, title) {
+  return Array.from(summaryGrid?.querySelectorAll(':scope > .card') || []).find(card =>
+    String(card.querySelector('.card-title')?.textContent || '').trim() === title
+  ) || null;
+}
+
+function setSummarySubtitle(summaryGrid, title, text) {
+  const card = summaryCardByTitle(summaryGrid, title);
+  const subtitle = card?.querySelector('div:last-child');
+  if (subtitle) subtitle.textContent = text;
+}
+
 function updateSummarySubtitles(summaryGrid) {
   if (!summaryGrid) return;
-  const cards = summaryGrid.querySelectorAll(':scope > .card');
-  const subtitles = [
-    'Registros según filtros',
-    'Según filtros aplicados',
-    'Según filtros aplicados',
-    'Según filtros aplicados',
-  ];
-
-  subtitles.forEach((text, index) => {
-    const subtitle = cards[index]?.querySelector('div:last-child');
-    if (subtitle) subtitle.textContent = text;
-  });
+  setSummarySubtitle(summaryGrid, 'Mediciones', 'Registros según filtros');
+  setSummarySubtitle(summaryGrid, 'Alertas automáticas', 'Según filtros aplicados');
+  setSummarySubtitle(summaryGrid, 'Alertas manuales', 'Según filtros aplicados');
+  setSummarySubtitle(summaryGrid, 'Incidencias', 'Según filtros aplicados');
 }
 
 function historyFilters(filterBar) {
@@ -196,10 +200,15 @@ function updateHistorySummary(container, stats = {}) {
   const summaryGrid = container.querySelector('div[style*="grid-template-columns"]');
   if (!summaryGrid) return;
 
-  const kpiMediciones = summaryGrid.querySelector('div:nth-child(1) div[style*="font-size:22px"]');
-  const kpiAutos = summaryGrid.querySelector('div:nth-child(2) div[style*="font-size:22px"]');
-  const kpiManuales = summaryGrid.querySelector('div:nth-child(3) div[style*="font-size:22px"]');
-  const kpiIncidencias = summaryGrid.querySelector('div:nth-child(4) div[style*="font-size:22px"]');
+  const measurementCard = summaryCardByTitle(summaryGrid, 'Mediciones');
+  const automaticCard = summaryCardByTitle(summaryGrid, 'Alertas automáticas');
+  const manualCard = summaryCardByTitle(summaryGrid, 'Alertas manuales');
+  const incidentCard = summaryCardByTitle(summaryGrid, 'Incidencias');
+
+  const kpiMediciones = measurementCard?.querySelector('div[style*="font-size:22px"]');
+  const kpiAutos = automaticCard?.querySelector('div[style*="font-size:22px"]');
+  const kpiManuales = manualCard?.querySelector('div[style*="font-size:22px"]');
+  const kpiIncidencias = incidentCard?.querySelector('div[style*="font-size:22px"]');
 
   if (kpiMediciones) kpiMediciones.textContent = stats.mediciones ?? 0;
   if (kpiAutos) kpiAutos.textContent = stats.automaticas ?? 0;
