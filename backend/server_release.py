@@ -257,14 +257,14 @@ class AppHandler(previous.AppHandler):
         # El endpoint original crea la alerta y su registro histórico. Después
         # de responder, vinculamos ambos registros para conservar trazabilidad.
         if path == "/api/alertas/manuales":
+            with base.get_conn() as conn:
+                before_id = conn.execute(
+                    "SELECT COALESCE(MAX(id), 0) FROM alertas"
+                ).fetchone()[0]
+
+            result = super().do_POST()
+
             try:
-                with base.get_conn() as conn:
-                    before_id = conn.execute(
-                        "SELECT COALESCE(MAX(id), 0) FROM alertas"
-                    ).fetchone()[0]
-
-                result = super().do_POST()
-
                 with base.get_conn() as conn:
                     row = conn.execute(
                         """
@@ -278,10 +278,10 @@ class AppHandler(previous.AppHandler):
                     ).fetchone()
                     if row:
                         _link_manual_history(conn, row["id"], row["zona"], row["creada_en"])
-                return result
-            except Exception:
-                # No altera el flujo original si sólo falla el enlace histórico.
-                return super().do_POST()
+            except Exception as exc:
+                print(f"[Historial alerta manual] No se pudo vincular: {exc}")
+
+            return result
 
         return super().do_POST()
 
