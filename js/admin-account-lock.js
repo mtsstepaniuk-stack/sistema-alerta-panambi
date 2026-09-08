@@ -125,3 +125,6 @@ import('./map-time-fix.js?v=20260907-1');
 
 // Corrige la hora de las alertas y reportes visibles en la pantalla de validación.
 import('./validation-time-fix.js?v=20260907-1');
+
+// La lista de Validar Alerta pasa a ser compacta: selección visual y acciones dentro de la tarjeta.
+import('./validation-card-actions.js?v=20260908-1');
