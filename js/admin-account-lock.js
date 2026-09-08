@@ -127,4 +127,4 @@ import('./map-time-fix.js?v=20260907-1');
 import('./validation-time-fix.js?v=20260907-1');
 
 // La lista de Validar Alerta pasa a ser compacta: selección visual y acciones dentro de la tarjeta.
-import('./validation-card-actions.js?v=20260908-1');
+import('./validation-card-actions.js?v=20260908-2');
