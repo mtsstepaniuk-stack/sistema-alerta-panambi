@@ -191,8 +191,18 @@ function enhanceHistoryButtons() {
   rows.forEach(row => {
     if (row.querySelector('.sat-alert-finalize-history')) return;
 
-    const rowText = normalize(row.textContent);
-    const index = available.findIndex(alert => rowText.includes(normalize(alert.zona)));
+    const explicitAlertId = Number(row.dataset.alertaId || 0);
+    let index = explicitAlertId
+      ? available.findIndex(alert => Number(alert.id) === explicitAlertId)
+      : -1;
+
+    // Compatibilidad con registros históricos anteriores que todavía no tengan
+    // alerta_id vinculado. Los registros nuevos siempre usan el ID exacto.
+    if (index < 0 && !explicitAlertId) {
+      const rowText = normalize(row.textContent);
+      index = available.findIndex(alert => rowText.includes(normalize(alert.zona)));
+    }
+
     if (index < 0) return;
 
     const alert = available.splice(index, 1)[0];
