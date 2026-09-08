@@ -5,6 +5,9 @@ Agrega cierre controlado de alertas manuales ya emitidas sin eliminarlas:
 - desaparece del mapa porque deja de estar activa;
 - la finalización queda registrada en Historial y Auditoría;
 - mantiene intactas las capas RNF1/RNF2 y los RF existentes.
+
+También normaliza la fecha operativa del historial a UTC-3 (Argentina), mientras
+los timestamps técnicos siguen almacenándose en UTC y se convierten al mostrarse.
 """
 
 from http.server import ThreadingHTTPServer
@@ -58,8 +61,7 @@ def _link_manual_history(conn, alert_id, zone, created_at=None):
               AND alerta_id IS NULL
             ORDER BY id DESC
             LIMIT 1
-            """,
-            (zone,),
+            """
         ).fetchone()
 
     if row:
@@ -82,10 +84,37 @@ def _backfill_manual_history_links(conn):
         _link_manual_history(conn, row["id"], row["zona"], row["creada_en"])
 
 
+def _ensure_argentina_history_dates(conn):
+    """Mantiene la columna fecha del Historial en el día calendario de Argentina."""
+    conn.executescript(
+        """
+        CREATE TRIGGER IF NOT EXISTS historial_fecha_argentina
+        AFTER INSERT ON historial
+        BEGIN
+          UPDATE historial
+          SET fecha = date(NEW.creado_en, '-3 hours')
+          WHERE id = NEW.id;
+        END;
+        """
+    )
+
+    # Corrige registros existentes, incluidos los creados entre las 21:00 y
+    # medianoche de Argentina que SQLite había asignado al día UTC siguiente.
+    conn.execute(
+        """
+        UPDATE historial
+        SET fecha = date(creado_en, '-3 hours')
+        WHERE creado_en IS NOT NULL
+          AND fecha <> date(creado_en, '-3 hours')
+        """
+    )
+
+
 def init_db():
     previous.init_db()
     with base.get_conn() as conn:
         base.ensure_column(conn, "historial", "alerta_id", "INTEGER")
+        _ensure_argentina_history_dates(conn)
         _backfill_manual_history_links(conn)
 
 
@@ -221,7 +250,7 @@ class AppHandler(previous.AppHandler):
                         INSERT INTO historial
                           (tipo, descripcion, detalle, nivel, badge, zona,
                            riesgo, fecha, alerta_id)
-                        VALUES (?, ?, ?, '—', 'FINALIZADA', ?, ?, date('now'), ?)
+                        VALUES (?, ?, ?, '—', 'FINALIZADA', ?, ?, date('now', '-3 hours'), ?)
                         """,
                         (
                             "Alerta manual",
@@ -293,6 +322,7 @@ if __name__ == "__main__":
     print("RNF1: control de generación de alertas <= 5 minutos habilitado")
     print("RNF2: control de precisión <= 5 cm habilitado")
     print("Alertas manuales: finalización y trazabilidad habilitadas")
+    print("Horario operativo: Argentina (UTC-3)")
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
