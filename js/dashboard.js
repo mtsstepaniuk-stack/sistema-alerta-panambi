@@ -2,6 +2,7 @@
  * Actualiza datos principales desde SQLite.
  */
 import { apiRequest } from './api.js';
+import { formatArgentinaTime } from './argentina-time.js';
 
 function classForAlert(alerta) {
   if (alerta?.origen === 'Vecinal' || alerta?.colorKey === 'lila') return 'alert-item-lila';
@@ -32,39 +33,47 @@ function colorForRisk(riesgo) {
 }
 
 function formatAlertTime(value) {
-  if (!value) return '—';
-  const date = new Date(String(value).replace(' ', 'T'));
-  if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+  return formatArgentinaTime(value) || '—';
 }
 
-function renderDashboardBanner(count, recentAlerts = []) {
+function renderDashboardBanner(pendingCount, recentAlerts = []) {
   const banner = document.querySelector('#s-dash .alert-banner');
   if (!banner) return;
 
-  if (count <= 0) {
+  const firstPending = recentAlerts.find(alerta => alerta.estado === 'Pendiente');
+  const activeManual = recentAlerts.find(alerta => alerta.origen === 'Manual' && alerta.estado === 'Emitida');
+  const highlighted = firstPending || activeManual;
+
+  if (!highlighted) {
     banner.style.display = 'none';
     return;
   }
 
-  const firstPending = recentAlerts.find(alerta => alerta.estado === 'Pendiente');
   banner.style.display = 'flex';
   banner.style.opacity = '1';
-  banner.classList.toggle('alert-banner-lila', firstPending?.origen === 'Vecinal');
+  banner.classList.toggle('alert-banner-lila', highlighted?.origen === 'Vecinal');
 
   const title = banner.querySelector('.alert-banner-title');
   const desc = banner.querySelector('.alert-banner-desc');
 
-  if (title) {
-    title.textContent = firstPending?.origen === 'Vecinal'
-      ? `REPORTE VECINAL PENDIENTE — ${firstPending.zona}`
-      : (firstPending ? `ALERTA ${firstPending.riesgo.toUpperCase()} ACTIVA — ${firstPending.zona}` : 'ALERTA ACTIVA');
+  if (firstPending) {
+    if (title) {
+      title.textContent = firstPending.origen === 'Vecinal'
+        ? `REPORTE VECINAL PENDIENTE — ${firstPending.zona}`
+        : `ALERTA ${firstPending.riesgo.toUpperCase()} ACTIVA — ${firstPending.zona}`;
+    }
+
+    if (desc) {
+      desc.textContent = `${firstPending.detalle || firstPending.mensaje} · ${pendingCount} alerta${pendingCount === 1 ? '' : 's'} pendiente${pendingCount === 1 ? '' : 's'} de validación.`;
+    }
+    return;
   }
 
+  if (title) {
+    title.textContent = `ALERTA MANUAL ${String(activeManual.riesgo || '').toUpperCase()} ACTIVA — ${activeManual.zona}`;
+  }
   if (desc) {
-    desc.textContent = firstPending
-      ? `${firstPending.detalle || firstPending.mensaje} · ${count} alerta${count === 1 ? '' : 's'} pendiente${count === 1 ? '' : 's'} de validación.`
-      : `${count} alerta${count === 1 ? '' : 's'} pendiente${count === 1 ? '' : 's'} de validación.`;
+    desc.textContent = `${activeManual.mensaje || activeManual.detalle || 'Alerta manual emitida.'} · Permanece activa en el mapa hasta ser finalizada.`;
   }
 }
 
