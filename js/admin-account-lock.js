@@ -110,3 +110,6 @@ import('./user-management-edit.js?v=20260907-1');
 
 // Visor interno de imágenes de reportes vecinales: evita abrir pestañas nuevas.
 import('./attachment-viewer.js?v=20260907-2');
+
+// Formato y límite de teléfonos en Gestión de Contactos.
+import('./contact-phone-format.js?v=20260907-1');
