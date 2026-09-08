@@ -4,6 +4,7 @@
  */
 import { apiRequest, buildQuery } from './api.js';
 import { currentUser } from './auth.js';
+import { formatArgentinaDateTime, argentinaDateKey } from './argentina-time.js';
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -59,20 +60,10 @@ function iconForType(entry) {
   };
 }
 
-function formatDateTime(value) {
-  if (!value) return '—';
-  const date = new Date(String(value).replace(' ', 'T'));
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString('es-AR', {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit'
-  });
-}
-
 function badgeClass(entry) {
   if (['ROJO', 'RECHAZADA', 'BAJA'].includes(entry.badge)) return 'badge-rojo';
   if (['NARANJA', 'OBSERVACIÓN'].includes(entry.badge)) return 'badge-naranja';
-  if (['NORMAL', 'VALIDADA'].includes(entry.badge)) return 'badge-verde';
+  if (['NORMAL', 'VALIDADA', 'FINALIZADA'].includes(entry.badge)) return 'badge-verde';
   if (['EMITIDA', 'REVISIÓN', 'ALTA', 'AJUSTE', 'EDICIÓN'].includes(entry.badge)) return 'badge-celeste';
   return 'badge-gris';
 }
@@ -189,7 +180,7 @@ export async function renderHistory() {
         <div class="hist-meta">
           <div class="hist-desc">${escapeHtml(entry.desc)}</div>
           <div class="hist-detail">${escapeHtml(entry.detail)}</div>
-          <div class="hist-datetime">Fecha y hora: ${escapeHtml(formatDateTime(entry.creado_en))}</div>
+          <div class="hist-datetime">Fecha y hora: ${escapeHtml(formatArgentinaDateTime(entry.creado_en))}</div>
         </div>
         <div class="hist-nivel" style="color:var(--azul-mid);">${escapeHtml(entry.nivel || '—')}</div>
         <span class="badge ${badgeClass(entry)}">${escapeHtml(entry.badge)}</span>
@@ -232,14 +223,15 @@ window.applyHistoryFilters = renderHistory;
 window.clearHistoryFilters = clearHistoryFilters;
 
 export function initHistoryFilters() {
-  const todayStr = new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const todayStr = argentinaDateKey(now);
   const dateInputs = document.querySelectorAll('#s-historial input[type="date"]');
   const filterBar = document.querySelector('#s-historial .filter-bar');
 
   ensureActionsFilter(filterBar);
 
   if (dateInputs.length >= 2) {
-    const yesterdayStr = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+    const yesterdayStr = argentinaDateKey(new Date(now.getTime() - 86400000));
     dateInputs[0].value = yesterdayStr;
     dateInputs[1].value = todayStr;
   }
