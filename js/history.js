@@ -1,10 +1,15 @@
 /**
  * History Module
- * Lee el historial desde SQLite y aplica filtros desde la interfaz.
+ * Lee el historial desde SQLite, aplica filtros y pagina los eventos.
  */
 import { apiRequest, buildQuery } from './api.js';
 import { currentUser } from './auth.js';
 import { formatArgentinaDateTime, argentinaDateKey } from './argentina-time.js';
+
+const HISTORY_PAGE_SIZE = 30;
+let historyOffset = 0;
+let historyHasMore = false;
+let historyLoading = false;
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -105,10 +110,10 @@ function updateSummarySubtitles(summaryGrid) {
   if (!summaryGrid) return;
   const cards = summaryGrid.querySelectorAll(':scope > .card');
   const subtitles = [
-    'Registros almacenados',
-    'Generadas por sensores',
-    'Emitidas por operadores',
-    'Reportes vecinales',
+    'Registros según filtros',
+    'Según filtros aplicados',
+    'Según filtros aplicados',
+    'Según filtros aplicados',
   ];
 
   subtitles.forEach((text, index) => {
@@ -117,36 +122,130 @@ function updateSummarySubtitles(summaryGrid) {
   });
 }
 
-export async function renderHistory() {
+function historyFilters(filterBar) {
+  return {
+    zona: filterBar.querySelector('select:nth-of-type(1)')?.value || 'Todas',
+    riesgo: filterBar.querySelector('select:nth-of-type(2)')?.value || 'Todos',
+    tipo: filterBar.querySelector('select:nth-of-type(3)')?.value || 'Todos',
+    desde: filterBar.querySelectorAll('input[type="date"]')[0]?.value || '',
+    hasta: filterBar.querySelectorAll('input[type="date"]')[1]?.value || '',
+  };
+}
+
+function ensureLoadMoreControl(container) {
+  let button = container.querySelector('[data-history-load-more]');
+  let wrap = button?.parentElement || null;
+
+  if (!button) {
+    const candidate = Array.from(container.querySelectorAll('button')).find(btn =>
+      String(btn.textContent || '').toLowerCase().includes('cargar más eventos')
+    );
+    if (candidate) {
+      button = candidate;
+      wrap = candidate.parentElement;
+    }
+  }
+
+  if (!button) {
+    wrap = document.createElement('div');
+    wrap.style.cssText = 'text-align:center;margin-top:16px;';
+    button = document.createElement('button');
+    button.className = 'btn btn-ghost btn-sm';
+    button.textContent = 'Cargar más eventos...';
+    wrap.appendChild(button);
+    container.appendChild(wrap);
+  }
+
+  button.setAttribute('data-history-load-more', '1');
+  button.removeAttribute('onclick');
+  button.onclick = () => loadMoreHistory();
+  return { wrap, button };
+}
+
+function updateLoadMoreControl(container) {
+  const { wrap, button } = ensureLoadMoreControl(container);
+  if (!wrap || !button) return;
+
+  wrap.style.display = historyHasMore ? 'block' : 'none';
+  button.disabled = historyLoading;
+  button.textContent = historyLoading ? 'Cargando...' : 'Cargar más eventos...';
+}
+
+function renderHistoryEntry(container, entry, beforeElement) {
+  const icon = iconForType(entry);
+  const entryDiv = document.createElement('div');
+  entryDiv.className = 'hist-entry';
+  if (entry.alerta_id) entryDiv.dataset.alertaId = String(entry.alerta_id);
+  entryDiv.innerHTML = `
+    <div style="width:42px;height:42px;background:${icon.bg};border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+      ${icon.svg}
+    </div>
+    <div class="hist-type-badge" style="background:${icon.bg};color:var(--texto-base);">${escapeHtml(entry.tipo)}</div>
+    <div class="hist-meta">
+      <div class="hist-desc">${escapeHtml(entry.desc)}</div>
+      <div class="hist-detail">${escapeHtml(entry.detail)}</div>
+      <div class="hist-datetime">Fecha y hora: ${escapeHtml(formatArgentinaDateTime(entry.creado_en))}</div>
+    </div>
+    <div class="hist-nivel" style="color:var(--azul-mid);">${escapeHtml(entry.nivel || '—')}</div>
+    <span class="badge ${badgeClass(entry)}">${escapeHtml(entry.badge)}</span>
+  `;
+  container.insertBefore(entryDiv, beforeElement);
+}
+
+function updateHistorySummary(container, stats = {}) {
+  const summaryGrid = container.querySelector('div[style*="grid-template-columns"]');
+  if (!summaryGrid) return;
+
+  const kpiMediciones = summaryGrid.querySelector('div:nth-child(1) div[style*="font-size:22px"]');
+  const kpiAutos = summaryGrid.querySelector('div:nth-child(2) div[style*="font-size:22px"]');
+  const kpiManuales = summaryGrid.querySelector('div:nth-child(3) div[style*="font-size:22px"]');
+  const kpiIncidencias = summaryGrid.querySelector('div:nth-child(4) div[style*="font-size:22px"]');
+
+  if (kpiMediciones) kpiMediciones.textContent = stats.mediciones ?? 0;
+  if (kpiAutos) kpiAutos.textContent = stats.automaticas ?? 0;
+  if (kpiManuales) kpiManuales.textContent = stats.manuales ?? 0;
+  if (kpiIncidencias) kpiIncidencias.textContent = stats.incidencias ?? 0;
+
+  const actionsCard = ensureActionsSummary(summaryGrid);
+  const actionsCount = actionsCard?.querySelector('[data-rf10-actions-count]');
+  if (actionsCount) actionsCount.textContent = stats.acciones ?? 0;
+
+  updateSummarySubtitles(summaryGrid);
+}
+
+export async function renderHistory(options = {}) {
+  const append = Boolean(options?.append);
   const container = document.querySelector('#s-historial .content');
-  if (!container) return;
+  if (!container || historyLoading) return;
 
   const filterBar = container.querySelector('.filter-bar');
   if (!filterBar) return;
 
   ensureActionsFilter(filterBar);
+  const loadControl = ensureLoadMoreControl(container);
 
-  // Limpia mensajes/eventos anteriores antes de cualquier nueva carga.
-  container.querySelectorAll('.hist-entry').forEach(el => el.remove());
-  const loadMoreBtnWrap = container.querySelector('div[style*="text-align:center"]');
-  if (loadMoreBtnWrap) loadMoreBtnWrap.style.display = 'none';
+  if (!append) {
+    historyOffset = 0;
+    historyHasMore = false;
+    container.querySelectorAll('.hist-entry').forEach(el => el.remove());
+  }
 
-  // La app inicializa módulos antes del login. No se consulta el historial
-  // hasta que exista una sesión válida, evitando el falso mensaje de 401.
   if (!currentUser()) return;
 
-  const selectZona = filterBar.querySelector('select:nth-of-type(1)')?.value || 'Todas';
-  const selectRiesgo = filterBar.querySelector('select:nth-of-type(2)')?.value || 'Todos';
-  const selectTipo = filterBar.querySelector('select:nth-of-type(3)')?.value || 'Todos';
-  const dateFrom = filterBar.querySelectorAll('input[type="date"]')[0]?.value;
-  const dateTo = filterBar.querySelectorAll('input[type="date"]')[1]?.value;
+  historyLoading = true;
+  updateLoadMoreControl(container);
+
+  const filters = historyFilters(filterBar);
+  const offset = append ? historyOffset : 0;
 
   let data;
   try {
-    data = await apiRequest(`/historial${buildQuery({ zona: selectZona, riesgo: selectRiesgo, tipo: selectTipo, desde: dateFrom, hasta: dateTo })}`);
+    data = await apiRequest(`/historial${buildQuery({
+      ...filters,
+      offset,
+      limit: HISTORY_PAGE_SIZE,
+    })}`);
   } catch (error) {
-    // apiRequest ya elimina una sesión realmente vencida y redirige al login.
-    // En ese caso no dejamos un cartel rojo obsoleto en Historial.
     if (!currentUser()) return;
 
     const errorDiv = document.createElement('div');
@@ -154,60 +253,34 @@ export async function renderHistory() {
     errorDiv.style.justifyContent = 'center';
     errorDiv.style.color = 'var(--rojo)';
     errorDiv.textContent = error.message;
-    container.insertBefore(errorDiv, loadMoreBtnWrap);
+    container.insertBefore(errorDiv, loadControl.wrap);
     return;
+  } finally {
+    historyLoading = false;
   }
 
   const eventos = data.eventos || [];
 
-  if (eventos.length === 0) {
+  if (!append && eventos.length === 0) {
     const emptyDiv = document.createElement('div');
     emptyDiv.className = 'hist-entry';
     emptyDiv.style.justifyContent = 'center';
     emptyDiv.style.color = 'var(--texto-sub)';
     emptyDiv.textContent = 'No se encontraron eventos en el historial que coincidan con los filtros aplicados.';
-    container.insertBefore(emptyDiv, loadMoreBtnWrap);
+    container.insertBefore(emptyDiv, loadControl.wrap);
   } else {
-    eventos.forEach(entry => {
-      const icon = iconForType(entry);
-      const entryDiv = document.createElement('div');
-      entryDiv.className = 'hist-entry';
-      entryDiv.innerHTML = `
-        <div style="width:42px;height:42px;background:${icon.bg};border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-          ${icon.svg}
-        </div>
-        <div class="hist-type-badge" style="background:${icon.bg};color:var(--texto-base);">${escapeHtml(entry.tipo)}</div>
-        <div class="hist-meta">
-          <div class="hist-desc">${escapeHtml(entry.desc)}</div>
-          <div class="hist-detail">${escapeHtml(entry.detail)}</div>
-          <div class="hist-datetime">Fecha y hora: ${escapeHtml(formatArgentinaDateTime(entry.creado_en))}</div>
-        </div>
-        <div class="hist-nivel" style="color:var(--azul-mid);">${escapeHtml(entry.nivel || '—')}</div>
-        <span class="badge ${badgeClass(entry)}">${escapeHtml(entry.badge)}</span>
-      `;
-      container.insertBefore(entryDiv, loadMoreBtnWrap);
-    });
+    eventos.forEach(entry => renderHistoryEntry(container, entry, loadControl.wrap));
   }
 
-  const summaryGrid = container.querySelector('div[style*="grid-template-columns"]');
-  const stats = data.stats || {};
-  if (summaryGrid) {
-    const kpiMediciones = summaryGrid.querySelector('div:nth-child(1) div[style*="font-size:22px"]');
-    const kpiAutos = summaryGrid.querySelector('div:nth-child(2) div[style*="font-size:22px"]');
-    const kpiManuales = summaryGrid.querySelector('div:nth-child(3) div[style*="font-size:22px"]');
-    const kpiIncidencias = summaryGrid.querySelector('div:nth-child(4) div[style*="font-size:22px"]');
+  historyOffset = offset + eventos.length;
+  historyHasMore = Boolean(data.hasMore);
+  updateHistorySummary(container, data.stats || {});
+  updateLoadMoreControl(container);
+}
 
-    if (kpiMediciones) kpiMediciones.textContent = stats.mediciones ?? 0;
-    if (kpiAutos) kpiAutos.textContent = stats.automaticas ?? 0;
-    if (kpiManuales) kpiManuales.textContent = stats.manuales ?? 0;
-    if (kpiIncidencias) kpiIncidencias.textContent = stats.incidencias ?? 0;
-
-    const actionsCard = ensureActionsSummary(summaryGrid);
-    const actionsCount = actionsCard?.querySelector('[data-rf10-actions-count]');
-    if (actionsCount) actionsCount.textContent = stats.acciones ?? 0;
-
-    updateSummarySubtitles(summaryGrid);
-  }
+export async function loadMoreHistory() {
+  if (!historyHasMore || historyLoading) return;
+  await renderHistory({ append: true });
 }
 
 export function clearHistoryFilters() {
@@ -219,6 +292,7 @@ export function clearHistoryFilters() {
 }
 
 window.renderHistory = renderHistory;
+window.loadMoreHistory = loadMoreHistory;
 window.applyHistoryFilters = renderHistory;
 window.clearHistoryFilters = clearHistoryFilters;
 
@@ -238,4 +312,10 @@ export function initHistoryFilters() {
 
   const filterBtn = filterBar?.querySelector('button');
   filterBtn?.setAttribute('onclick', 'applyHistoryFilters()');
+
+  const container = document.querySelector('#s-historial .content');
+  if (container) {
+    historyHasMore = false;
+    updateLoadMoreControl(container);
+  }
 }
