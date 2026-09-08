@@ -116,3 +116,6 @@ import('./contact-phone-format.js?v=20260907-1');
 
 // Atajos de interfaz: Enter en login y acceso al Panel Principal desde el logo.
 import('./ui-shortcuts.js?v=20260907-1');
+
+// Finalización de alertas manuales desde mapa e Historial.
+import('./alert-finalization.js?v=20260907-1');
