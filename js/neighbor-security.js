@@ -82,7 +82,7 @@ function ensureRegistrationModal() {
       <div class="neighbor-grid">
         <div class="input-group wide"><label>Nombre y apellido *</label><input id="neighbor-name" autocomplete="name" maxlength="80"></div>
         <div class="input-group"><label>DNI *</label><input id="neighbor-dni" inputmode="numeric" maxlength="8" pattern="[0-9]{7,8}" placeholder="7 u 8 números"></div>
-        <div class="input-group"><label>Teléfono</label><input id="neighbor-phone" type="tel" inputmode="tel" maxlength="20" autocomplete="tel" placeholder="+54 9 376 ..."></div>
+        <div class="input-group"><label>Teléfono</label><div style="display:flex;align-items:center;"><span style="height:38px;display:flex;align-items:center;padding:0 10px;border:1px solid var(--gris-border);border-right:0;border-radius:8px 0 0 8px;background:var(--gris-bg);font-size:12px;font-weight:700;">+54</span><input id="neighbor-phone" type="tel" inputmode="numeric" maxlength="13" autocomplete="tel-national" placeholder="93755595959" style="border-radius:0 8px 8px 0;" oninput="this.value=this.value.replace(/\\D/g,'').slice(0,13)"></div></div>
         <div class="input-group wide"><label>Correo electrónico *</label><input id="neighbor-email" type="email" maxlength="120" autocomplete="email" placeholder="vecino@correo.com"></div>
         <div class="input-group"><label>Zona *</label>
           <select id="neighbor-zone">
