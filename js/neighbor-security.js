@@ -94,7 +94,7 @@ function ensureRegistrationModal() {
       </div>
       <div id="neighbor-register-captcha" class="neighbor-captcha"></div>
       <div id="neighbor-register-error" class="error-msg"></div>
-      <div class="neighbor-security-hint">La cuenta evita reportes anónimos y permite aplicar límites por vecino. El SAT no utiliza una base pública de DNI: controla unicidad dentro del sistema.</div>
+      
       <div class="neighbor-actions">
         <button class="btn btn-ghost" type="button" onclick="closeNeighborRegistration()">Cancelar</button>
         <button class="btn btn-primary" type="button" onclick="registerNeighbor()">Crear cuenta</button>
