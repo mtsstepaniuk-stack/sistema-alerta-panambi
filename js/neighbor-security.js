@@ -80,17 +80,17 @@ function ensureRegistrationModal() {
       <h2 id="neighbor-register-title">Registro de vecino</h2>
       <div class="sub">Para enviar reportes vecinales necesitás una cuenta. El DNI y el correo sólo pueden asociarse a una cuenta dentro del SAT.</div>
       <div class="neighbor-grid">
-        <div class="input-group wide"><label>Nombre y apellido *</label><input id="neighbor-name" autocomplete="name"></div>
-        <div class="input-group"><label>DNI *</label><input id="neighbor-dni" inputmode="numeric" maxlength="8" placeholder="Solo números"></div>
-        <div class="input-group"><label>Teléfono</label><input id="neighbor-phone" inputmode="tel" placeholder="+54 9 376 ..."></div>
-        <div class="input-group wide"><label>Correo electrónico *</label><input id="neighbor-email" type="email" autocomplete="email" placeholder="vecino@correo.com"></div>
+        <div class="input-group wide"><label>Nombre y apellido *</label><input id="neighbor-name" autocomplete="name" maxlength="80"></div>
+        <div class="input-group"><label>DNI *</label><input id="neighbor-dni" inputmode="numeric" maxlength="8" pattern="[0-9]{7,8}" placeholder="7 u 8 números"></div>
+        <div class="input-group"><label>Teléfono</label><input id="neighbor-phone" type="tel" inputmode="tel" maxlength="20" autocomplete="tel" placeholder="+54 9 376 ..."></div>
+        <div class="input-group wide"><label>Correo electrónico *</label><input id="neighbor-email" type="email" maxlength="120" autocomplete="email" placeholder="vecino@correo.com"></div>
         <div class="input-group"><label>Zona *</label>
           <select id="neighbor-zone">
             <option value="">Seleccionar...</option><option>Ribera Norte</option><option>Bajo Uruguay</option>
             <option>Costa Sur</option><option>Zona Alta</option><option>Puente</option><option>Arroyo</option><option>Otra zona</option>
           </select>
         </div>
-        <div class="input-group"><label>Contraseña *</label><input id="neighbor-password" type="password" minlength="8" autocomplete="new-password" placeholder="Mínimo 8 caracteres"></div>
+        <div class="input-group"><label>Contraseña *</label><input id="neighbor-password" type="password" minlength="8" maxlength="72" autocomplete="new-password" placeholder="8 a 72 caracteres"></div>
       </div>
       <div id="neighbor-register-captcha" class="neighbor-captcha"></div>
       <div id="neighbor-register-error" class="error-msg"></div>
