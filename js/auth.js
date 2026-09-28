@@ -746,7 +746,12 @@ export async function login() {
     localStorage.setItem('sat-token', data.token || '');
     document.body.classList.remove('public-report-mode');
     refreshUserMenu();
-    window.navigate('s-dash');
+    if (data.user.rol === 'Vecino') {
+      window.navigate('s-reporte');
+      setTimeout(() => window.prepareNeighborReport?.(), 60);
+    } else {
+      window.navigate('s-dash');
+    }
     showToast(`Bienvenido, ${data.user.nombre}.`);
   } catch (error) {
     showToast(error.message, true);
