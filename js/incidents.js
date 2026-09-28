@@ -61,8 +61,16 @@ export async function sendReporte() {
 
   if (!nombreEl || !dniEl || !zonaEl || !tipoEl || !descEl || !locEl || !errEl || !successEl || !formBodyEl || !formFooterEl) return;
 
-  const nombre = nombreEl.value.trim();
-  const dni = dniEl.value.replace(/\D/g, '');
+  let sessionUser = null;
+  try { sessionUser = JSON.parse(localStorage.getItem('sat-user') || 'null'); } catch {}
+  if (!sessionUser || sessionUser.rol !== 'Vecino' || !localStorage.getItem('sat-token')) {
+    errEl.textContent = 'Debe iniciar sesión con una cuenta de vecino para enviar un reporte.';
+    errEl.classList.add('show');
+    return;
+  }
+
+  const nombre = String(sessionUser.nombre || nombreEl.value).trim();
+  const dni = String(sessionUser.dni || dniEl.value).replace(/\D/g, '');
   const zona = zonaEl.value;
   const tipo = tipoEl.value;
   const descripcion = descEl.value.trim();
@@ -80,11 +88,18 @@ export async function sendReporte() {
     return;
   }
 
+  const turnstileToken = window.getNeighborReportCaptchaToken?.() || '';
+  if (!turnstileToken) {
+    errEl.textContent = 'Complete la verificación CAPTCHA antes de enviar el reporte.';
+    errEl.classList.add('show');
+    return;
+  }
+
   try {
     errEl.classList.remove('show');
     const data = await apiRequest('/incidencias', {
       method: 'POST',
-      body: JSON.stringify({ nombre, dni, zona, tipo, descripcion, ubicacion, imagen: selectedImage })
+      body: JSON.stringify({ nombre, dni, zona, tipo, descripcion, ubicacion, imagen: selectedImage, turnstileToken })
     });
 
     formBodyEl.style.display = 'none';
@@ -99,6 +114,7 @@ export async function sendReporte() {
   } catch (error) {
     errEl.textContent = error.message;
     errEl.classList.add('show');
+    window.resetNeighborReportCaptcha?.();
   }
 }
 
@@ -120,8 +136,16 @@ export function resetReporte() {
   const backSmallEl = document.getElementById('rep-back-small');
 
   selectedImage = null;
-  if (nombreEl) nombreEl.value = '';
-  if (dniEl) dniEl.value = '';
+  let sessionUser = null;
+  try { sessionUser = JSON.parse(localStorage.getItem('sat-user') || 'null'); } catch {}
+  if (nombreEl) {
+    nombreEl.value = sessionUser?.rol === 'Vecino' ? (sessionUser.nombre || '') : '';
+    nombreEl.readOnly = sessionUser?.rol === 'Vecino';
+  }
+  if (dniEl) {
+    dniEl.value = sessionUser?.rol === 'Vecino' ? (sessionUser.dni || '') : '';
+    dniEl.readOnly = sessionUser?.rol === 'Vecino';
+  }
   if (zonaEl) zonaEl.value = '';
   if (tipoEl) tipoEl.value = '';
   if (descEl) descEl.value = '';
