@@ -192,6 +192,8 @@ class AppHandler(previous.AppHandler):
         password = str(data.get("password") or "")
         if not usuario or not password:
             return self.send_json({"ok": False, "error": "Debe ingresar usuario y contraseña."}, 400)
+        if len(usuario) > 120 or len(password) > 128:
+            return self.send_json({"ok": False, "error": "Credenciales inválidas."}, 400)
 
         with base.get_conn() as conn:
             row = conn.execute(
@@ -227,20 +229,30 @@ class AppHandler(previous.AppHandler):
             return self.send_json({"ok": False, "error": captcha_error}, 400)
 
         nombre = re.sub(r"\s+", " ", str(data.get("nombre") or "").strip())
-        dni = re.sub(r"\D", "", str(data.get("dni") or ""))
+        dni_raw = str(data.get("dni") or "").strip()
+        dni = re.sub(r"\D", "", dni_raw)
         email = str(data.get("email") or "").strip().lower()
         password = str(data.get("password") or "")
         zona = str(data.get("zona") or "").strip()
-        telefono = str(data.get("telefono") or "").strip()
+        telefono = re.sub(r"\s+", " ", str(data.get("telefono") or "").strip())
 
         if not nombre or not dni or not email or not password or not zona:
             return self.send_json({"ok": False, "error": "Nombre, DNI, correo, contraseña y zona son obligatorios."}, 400)
-        if len(dni) not in (7, 8):
-            return self.send_json({"ok": False, "error": "El DNI debe tener 7 u 8 números."}, 400)
-        if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
-            return self.send_json({"ok": False, "error": "Ingrese un correo electrónico válido."}, 400)
-        if len(password) < 8:
-            return self.send_json({"ok": False, "error": "La contraseña debe tener al menos 8 caracteres."}, 400)
+        if len(nombre) < 3 or len(nombre) > 80 or not re.fullmatch(r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ' .-]+", nombre):
+            return self.send_json({"ok": False, "error": "Ingrese un nombre válido de hasta 80 caracteres."}, 400)
+        if not re.fullmatch(r"\d{7,8}", dni_raw):
+            return self.send_json({"ok": False, "error": "El DNI debe contener únicamente 7 u 8 números."}, 400)
+        if len(email) > 120 or not re.fullmatch(r"[^@\s]{1,64}@[^@\s]+\.[^@\s]+", email):
+            return self.send_json({"ok": False, "error": "Ingrese un correo electrónico válido de hasta 120 caracteres."}, 400)
+        if telefono:
+            telefono_digits = re.sub(r"\D", "", telefono)
+            if len(telefono) > 20 or len(telefono_digits) < 8 or len(telefono_digits) > 15 or not re.fullmatch(r"[+()0-9 .-]+", telefono):
+                return self.send_json({"ok": False, "error": "Ingrese un teléfono válido de entre 8 y 15 dígitos."}, 400)
+        if len(password) < 8 or len(password) > 72:
+            return self.send_json({"ok": False, "error": "La contraseña debe tener entre 8 y 72 caracteres."}, 400)
+        allowed_zones = {"Ribera Norte", "Bajo Uruguay", "Costa Sur", "Zona Alta", "Puente", "Arroyo", "Otra zona"}
+        if zona not in allowed_zones:
+            return self.send_json({"ok": False, "error": "Seleccione una zona válida."}, 400)
 
         with base.get_conn() as conn:
             if conn.execute("SELECT 1 FROM usuarios WHERE dni = ? LIMIT 1", (dni,)).fetchone():
