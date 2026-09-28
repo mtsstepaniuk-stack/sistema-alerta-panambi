@@ -234,7 +234,7 @@ class AppHandler(previous.AppHandler):
         email = str(data.get("email") or "").strip().lower()
         password = str(data.get("password") or "")
         zona = str(data.get("zona") or "").strip()
-        telefono = re.sub(r"\s+", " ", str(data.get("telefono") or "").strip())
+        telefono = re.sub(r"\D", "", str(data.get("telefono") or "").strip())
 
         if not nombre or not dni or not email or not password or not zona:
             return self.send_json({"ok": False, "error": "Nombre, DNI, correo, contraseña y zona son obligatorios."}, 400)
@@ -245,9 +245,9 @@ class AppHandler(previous.AppHandler):
         if len(email) > 120 or not re.fullmatch(r"[^@\s]{1,64}@[^@\s]+\.[^@\s]+", email):
             return self.send_json({"ok": False, "error": "Ingrese un correo electrónico válido de hasta 120 caracteres."}, 400)
         if telefono:
-            telefono_digits = re.sub(r"\D", "", telefono)
-            if len(telefono) > 20 or len(telefono_digits) < 8 or len(telefono_digits) > 15 or not re.fullmatch(r"[+()0-9 .-]+", telefono):
-                return self.send_json({"ok": False, "error": "Ingrese un teléfono válido de entre 8 y 15 dígitos."}, 400)
+            if not re.fullmatch(r"\d{8,13}", telefono):
+                return self.send_json({"ok": False, "error": "Ingrese un teléfono válido de hasta 13 números, sin incluir +54."}, 400)
+            telefono = "+54" + telefono
         if len(password) < 8 or len(password) > 72:
             return self.send_json({"ok": False, "error": "La contraseña debe tener entre 8 y 72 caracteres."}, 400)
         allowed_zones = {"Ribera Norte", "Bajo Uruguay", "Costa Sur", "Zona Alta", "Puente", "Arroyo", "Otra zona"}
