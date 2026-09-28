@@ -4,7 +4,7 @@ RF11 completa la autenticación y el control de roles también en backend:
 - el login crea una sesión con token temporal;
 - las APIs operativas requieren una sesión válida;
 - administración de usuarios y configuración de umbrales requieren Administrador;
-- el reporte vecinal continúa siendo público;
+- las capas posteriores pueden restringir el reporte vecinal a cuentas registradas;
 - el backend usa el usuario autenticado como operador de las acciones.
 
 La migración de contraseñas a hash seguro corresponde al requisito no funcional de
@@ -68,7 +68,7 @@ def _session_user(token):
     with base.get_conn() as conn:
         row = conn.execute(
             """
-            SELECT id, usuario, nombre, rol
+            SELECT id, usuario, nombre, rol, dni, email, zona, telefono
             FROM usuarios
             WHERE id = ? AND activo = 1
             """,
