@@ -9,6 +9,7 @@ import { showToast } from './modals.js';
 let config = null;
 let registerWidgetId = null;
 let reportWidgetId = null;
+const TURNSTILE_SITE_KEY_FALLBACK = '0x4AAAAAAFHy-GMbFmE81XFg';
 
 function user() {
   try { return JSON.parse(localStorage.getItem('sat-user') || 'null'); }
@@ -107,7 +108,8 @@ async function renderCaptcha(target, kind) {
   const cfg = await loadConfig();
   const host = document.getElementById(target);
   if (!host) return null;
-  if (!cfg.turnstileConfigured || !cfg.turnstileSiteKey) {
+  const siteKey = cfg.turnstileSiteKey || TURNSTILE_SITE_KEY_FALLBACK;
+  if (!siteKey) {
     host.innerHTML = '';
     throw new Error('No se pudo cargar la verificación. Recargá la página e intentá nuevamente.');
   }
@@ -115,7 +117,11 @@ async function renderCaptcha(target, kind) {
   if (kind === 'register' && registerWidgetId !== null) window.turnstile.remove(registerWidgetId);
   if (kind === 'report' && reportWidgetId !== null) window.turnstile.remove(reportWidgetId);
   host.innerHTML = '';
-  const id = window.turnstile.render(host, { sitekey: cfg.turnstileSiteKey, theme: 'auto' });
+  const id = window.turnstile.render(host, {
+    sitekey: siteKey,
+    theme: 'auto',
+    'error-callback': () => showToast('No se pudo validar el CAPTCHA. Recargá la página e intentá nuevamente.', true),
+  });
   if (kind === 'register') registerWidgetId = id;
   else reportWidgetId = id;
   return id;
@@ -166,7 +172,11 @@ export async function prepareNeighborReport() {
   if (name) { name.value = u.nombre || ''; name.readOnly = true; }
   if (dni) { dni.value = u.dni || ''; dni.readOnly = true; }
   const back = document.getElementById('rep-back-small');
-  if (back) { back.textContent = '← Cerrar sesión'; back.setAttribute('onclick', 'logout()'); }
+  if (back) {
+    back.textContent = '← Salir';
+    back.setAttribute('onclick', 'exitNeighborSession()');
+    back.style.display = 'inline-flex';
+  }
   let host = document.getElementById('neighbor-report-captcha');
   if (!host) {
     host = document.createElement('div');
@@ -181,6 +191,14 @@ export async function prepareNeighborReport() {
 export function getNeighborReportCaptchaToken() {
   if (reportWidgetId === null || !window.turnstile) return '';
   return window.turnstile.getResponse(reportWidgetId) || '';
+}
+
+export function exitNeighborSession() {
+  localStorage.removeItem('sat-token');
+  localStorage.removeItem('sat-user');
+  localStorage.removeItem('sat-last-screen');
+  document.body.classList.remove('public-report-mode');
+  window.navigate?.('s-login');
 }
 
 export function resetNeighborReportCaptcha() {
@@ -213,6 +231,7 @@ window.closeNeighborRegistration = closeNeighborRegistration;
 window.registerNeighbor = registerNeighbor;
 window.getNeighborReportCaptchaToken = getNeighborReportCaptchaToken;
 window.resetNeighborReportCaptcha = resetNeighborReportCaptcha;
+window.exitNeighborSession = exitNeighborSession;
 window.prepareNeighborReport = prepareNeighborReport;
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once:true });
