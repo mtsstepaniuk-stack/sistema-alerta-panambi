@@ -28,7 +28,7 @@ base = previous.base
 SENSOR_READING_INTERVAL_SECONDS = 5 * 60
 _underlying_simulator = None
 
-TURNSTILE_SITE_KEY = str(os.environ.get("TURNSTILE_SITE_KEY") or "").strip()
+TURNSTILE_SITE_KEY = str(os.environ.get("TURNSTILE_SITE_KEY") or "0x4AAAAAAFHy-GMbFmE81XFg").strip()
 TURNSTILE_SECRET_KEY = str(os.environ.get("TURNSTILE_SECRET_KEY") or "").strip()
 REPORT_LIMIT = 3
 REPORT_WINDOW_MINUTES = 30
