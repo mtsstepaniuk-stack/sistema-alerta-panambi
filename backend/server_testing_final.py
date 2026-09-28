@@ -246,8 +246,8 @@ class AppHandler(previous.AppHandler):
             return self.send_json({"ok": False, "error": "Ingrese un correo electrónico válido de hasta 120 caracteres."}, 400)
         if telefono:
             if not re.fullmatch(r"\d{8,13}", telefono):
-                return self.send_json({"ok": False, "error": "Ingrese un teléfono válido de hasta 13 números, sin incluir +54."}, 400)
-            telefono = "+54" + telefono
+                return self.send_json({"ok": False, "error": "Ingrese un teléfono válido de entre 8 y 13 números, incluyendo el código de país."}, 400)
+            telefono = "+" + telefono
         if len(password) < 8 or len(password) > 72:
             return self.send_json({"ok": False, "error": "La contraseña debe tener entre 8 y 72 caracteres."}, 400)
         allowed_zones = {"Ribera Norte", "Bajo Uruguay", "Costa Sur", "Zona Alta", "Puente", "Arroyo", "Otra zona"}
