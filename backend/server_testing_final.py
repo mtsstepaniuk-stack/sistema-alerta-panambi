@@ -143,6 +143,34 @@ def init_db():
         conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_usuarios_dni ON usuarios(dni) WHERE dni IS NOT NULL AND dni <> ''")
         conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_usuarios_email ON usuarios(LOWER(email)) WHERE email IS NOT NULL AND email <> ''")
 
+        # Cuenta vecinal de demostración para pruebas rápidas del proyecto.
+        demo_password = _password_hash("vecino")
+        demo = conn.execute(
+            "SELECT id FROM usuarios WHERE LOWER(usuario) = 'vecino' LIMIT 1"
+        ).fetchone()
+        if demo:
+            conn.execute(
+                """
+                UPDATE usuarios
+                SET password = ?, nombre = 'Vecino de Prueba', rol = 'Vecino',
+                    dni = '99999999', email = 'vecino@sat.local',
+                    zona = 'Ribera Norte', telefono = '', activo = 1
+                WHERE id = ?
+                """,
+                (demo_password, int(demo["id"])),
+            )
+        else:
+            conn.execute(
+                """
+                INSERT INTO usuarios
+                  (usuario, password, nombre, rol, dni, email, zona, telefono, activo)
+                VALUES
+                  ('vecino', ?, 'Vecino de Prueba', 'Vecino',
+                   '99999999', 'vecino@sat.local', 'Ribera Norte', '', 1)
+                """,
+                (demo_password,),
+            )
+
     global _underlying_simulator
     if _underlying_simulator is None:
         _underlying_simulator = base.simulate_sensor_readings
