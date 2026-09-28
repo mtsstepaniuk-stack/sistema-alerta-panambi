@@ -53,7 +53,7 @@ function styles() {
   const style = document.createElement('style');
   style.id = 'neighbor-security-styles';
   style.textContent = `
-    .neighbor-login-note{margin:10px 0 0;padding:10px 12px;border:1px solid var(--gris-border);border-radius:9px;background:rgba(255,255,255,.55);font-size:11px;line-height:1.45;color:var(--texto-sub)}
+    .neighbor-login-note{margin:10px 0 0;padding:0;background:transparent;border:0;font-size:11px;line-height:1.45;color:inherit}
     .neighbor-register-overlay{position:fixed;inset:0;z-index:10000;background:rgba(10,28,46,.72);display:none;align-items:center;justify-content:center;padding:18px}
     .neighbor-register-overlay.open{display:flex}
     .neighbor-register-card{width:min(520px,100%);max-height:94vh;overflow:auto;background:var(--blanco,#fff);border-radius:16px;padding:24px;box-shadow:0 24px 70px rgba(0,0,0,.28)}
@@ -108,8 +108,8 @@ async function renderCaptcha(target, kind) {
   const host = document.getElementById(target);
   if (!host) return null;
   if (!cfg.turnstileConfigured || !cfg.turnstileSiteKey) {
-    host.innerHTML = '<div class="error-msg show">CAPTCHA pendiente de configuración del servidor.</div>';
-    return null;
+    host.innerHTML = '';
+    throw new Error('No se pudo cargar la verificación. Recargá la página e intentá nuevamente.');
   }
   await loadTurnstileScript();
   if (kind === 'register' && registerWidgetId !== null) window.turnstile.remove(registerWidgetId);
