@@ -39,13 +39,20 @@ export function restorePrivateScreen() {
 export function navigate(id) {
   const user = currentUser();
 
-  // El reporte vecinal es público: no pertenece al panel de operadores.
-  if (id === 's-reporte' && isLoggedIn()) {
-    id = 's-dash';
+  const neighbor = user?.rol === 'Vecino';
+
+  // El reporte vecinal requiere una cuenta de vecino autenticada.
+  if (id === 's-reporte' && !neighbor) {
+    id = isLoggedIn() ? 's-dash' : 's-login';
+  }
+
+  // Un vecino autenticado sólo accede a su formulario de reporte.
+  if (neighbor && id !== 's-reporte' && id !== 's-login') {
+    id = 's-reporte';
   }
 
   // El resto del sistema requiere sesión.
-  if (!isLoggedIn() && id !== 's-login' && id !== 's-reporte') {
+  if (!isLoggedIn() && id !== 's-login') {
     id = 's-login';
   }
 
@@ -112,17 +119,16 @@ export function navigate(id) {
 }
 
 export function openPublicReport() {
-  localStorage.removeItem('sat-user');
-  localStorage.removeItem('sat-token');
-  document.body.classList.remove('admin-role', 'technical-role');
-  document.body.classList.add('public-report-mode');
-  window.refreshFinalRoleVisibility?.();
-  window.resetReporte?.();
-  navigate('s-reporte');
+  // Compatibilidad: el acceso público ya no abre el formulario.
+  window.openNeighborRegistration?.();
 }
 
 export function goLogin() {
   document.body.classList.remove('public-report-mode');
+  if (currentUser()?.rol === 'Vecino') {
+    window.logout?.();
+    return;
+  }
   navigate('s-login');
 }
 
