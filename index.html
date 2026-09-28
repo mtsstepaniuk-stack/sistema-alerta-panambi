@@ -53,9 +53,9 @@
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       Ingresar al Sistema
     </button>
-    <button class="btn btn-danger btn-full btn-lg login-report-btn" onclick="openPublicReport()" style="margin-top:10px;">
+    <button class="btn btn-danger btn-full btn-lg login-report-btn" onclick="openNeighborRegistration()" style="margin-top:10px;">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 12h6M9 16h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><rect x="4" y="4" width="16" height="16" rx="2" stroke="currentColor" stroke-width="2"/></svg>
-      Reportar incidencia como vecino
+      Crear cuenta de vecino
     </button>
     <div class="login-footer">
       <strong>Municipalidad de Panambí</strong><br>
@@ -562,11 +562,11 @@
           </div>
           <div class="input-group">
             <label>Nombre y apellido *</label>
-            <input type="text" id="rep-nombre" placeholder="Ej: Carlos Gómez">
+            <input type="text" id="rep-nombre" placeholder="Datos de la cuenta" readonly>
           </div>
           <div class="input-group">
             <label>DNI *</label>
-            <input type="text" id="rep-dni" placeholder="Solo números" inputmode="numeric" maxlength="8">
+            <input type="text" id="rep-dni" placeholder="Datos de la cuenta" inputmode="numeric" maxlength="8" readonly>
           </div>
           <div class="input-group">
             <label>Zona aproximada *</label>
