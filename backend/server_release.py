@@ -320,7 +320,7 @@ if __name__ == "__main__":
     httpd = ThreadingHTTPServer(("", base.PORT), AppHandler)
     print(f"SAT Inundaciones escuchando en 0.0.0.0:{base.PORT}")
     print("RNF1: control de generación de alertas <= 5 minutos habilitado")
-    print("RNF2: control de precisión <= 5 cm habilitado")
+    print("Sensores externos: SAT consume mediciones ya procesadas")
     print("Alertas manuales: finalización y trazabilidad habilitadas")
     print("Horario operativo: Argentina (UTC-3)")
     try:
